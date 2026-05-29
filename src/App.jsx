@@ -365,7 +365,7 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
   const [cart, setCart]         = useState([]);
   const [date, setDate]         = useState(today());
   const [productId, setProductId] = useState("");
-  const [qty, setQty]           = useState("1");
+  const [qty, setQty]           = useState("");
   const [payType, setPayType]   = useState("cash");
   const [clientId, setClientId] = useState("");
   const [comment, setComment]   = useState("");
@@ -518,6 +518,34 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
 }
 
 // ─── PURCHASE ────────────────────────────────────────────────────
+function PurchaseHistory() {
+  const [list, setList] = useState([]);
+  useEffect(() => {
+    supabase.from("purchases").select("*, purchase_items(*)")
+      .order("created_at", { ascending:false }).limit(10)
+      .then(({ data }) => setList(data || []));
+  }, []);
+  return (
+    <div>
+      {list.length === 0 && <div style={{ color:"#475569", fontSize:13 }}>Ҳәли приход жоқ</div>}
+      {list.map(p => {
+        const total = p.purchase_items?.reduce((s,i) => s + i.qty * i.buy_price, 0) || 0;
+        return (
+          <div key={p.id} style={{ padding:"8px 0", borderBottom:"1px solid #0f172a" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+              <span style={{ color:"#94a3b8" }}>{p.date}</span>
+              <span style={{ color:"#3b82f6", fontWeight:700 }}>{fmt(total)}</span>
+            </div>
+            <div style={{ fontSize:11, color:"#64748b" }}>
+              {p.purchase_items?.map(i => `${i.product_name} ×${i.qty}`).join(", ")}
+            </div>
+            {p.comment && <div style={{ fontSize:11, color:"#94a3b8" }}>💬 {p.comment}</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 function Purchase({ profile, products, categories, refreshProducts }) {
   const [cart, setCart]         = useState([]);
   const [date, setDate]         = useState(today());
@@ -635,6 +663,11 @@ function Purchase({ profile, products, categories, refreshProducts }) {
           </button>
         </div>
       )}
+      {/* Приход тарийхы */}
+<div style={{ background:"#1e293b", borderRadius:12, padding:12, marginTop:8 }}>
+  <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>📋 Соңғы приходлар</div>
+  <PurchaseHistory />
+</div>
     </div>
   );
 }
@@ -1091,7 +1124,7 @@ function SearchPicker({ products, value, onChange }) {
       <div style={{ display:"flex", gap:8 }}>
         <div style={{ flex:1, position:"relative" }}>
           <input placeholder={selected ? selected.name : "🔍 Товар аты ямаса штрих-код..."}
-            value={search} onChange={e=>{setSearch(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)}
+            value={search} onChange={e=>{setSearch(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)} onClick={()=>setOpen(true)}
             style={{ width:"100%", ...inputStyle, marginBottom:0, border:`1px solid ${open?"#f59e0b":"#334155"}`, boxSizing:"border-box" }} />
           {selected && !search && (
             <button onClick={()=>{onChange("");setSearch("");}} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:16 }}>✕</button>
