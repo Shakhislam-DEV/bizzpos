@@ -945,7 +945,9 @@ function Stats() {
           <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>🏆 Товар үлеси</div>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
+  label={({name, percent}) => `${name} ${(percent*100).toFixed(0)}%`}
+  labelLine={false}>
                 {pieData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
               </Pie>
               <Tooltip 
@@ -1050,6 +1052,7 @@ function Reports({ profile, products }) {
         <Card icon="🛒" label="Сатыўлар саны" value={sales.length+" рет"} color="#3b82f6" />
         <Card icon="🏦" label="Кассадагы нақт" value={fmt(cashInRegister)} color="#10b981" />
         <Card icon="💸" label="Тапсырылған" value={fmt(totalHandover)} color="#8b5cf6" />
+        <Card icon="📊" label="Маржа %" value={revenue ? ((profit/revenue)*100).toFixed(1)+"%" : "0%"} color="#14b8a6" />
       </div>
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
         <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Төлем түрлери</div>
