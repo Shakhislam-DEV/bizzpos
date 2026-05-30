@@ -728,23 +728,14 @@ function Products({ products, categories, refreshProducts }) {
 
 // ─── DEBT PAYMENT ────────────────────────────────────────────────
 function DebtPayment({ client, onPaid }) {
-  const [amt, setAmt]         = useState("");
-  const [comment, setComment] = useState("");
-  const [date, setDate]       = useState(today());
-  const [show, setShow]       = useState(false);
+  const [amt, setAmt]   = useState("");
+  const [show, setShow] = useState(false);
 
   const pay = async () => {
     if (!amt) return;
     const newDebt = Math.max(0, client.debt - +amt);
     await supabase.from("clients").update({ debt: newDebt }).eq("id", client.id);
-    // Касса жазыўы — қарыз төлеў
-    await supabase.from("cash_handovers").insert({
-      seller_id: null,
-      amount: +amt,
-      comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`,
-      date
-    });
-    setAmt(""); setComment(""); setShow(false);
+    setAmt(""); setShow(false);
     onPaid();
   };
 
@@ -756,17 +747,11 @@ function DebtPayment({ client, onPaid }) {
           💵 Қарыз төлеў
         </button>
       ) : (
-        <div style={{ marginTop:8, display:"flex", flexDirection:"column", gap:6 }}>
-          <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-            style={{ padding:"8px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13 }} />
-          <input type="number" placeholder="Сумма (сўм)" value={amt} onChange={e=>setAmt(e.target.value)}
-            style={{ padding:"8px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13 }} />
-          <input type="text" placeholder="Комментарий (ихтиярий)" value={comment} onChange={e=>setComment(e.target.value)}
-            style={{ padding:"8px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13 }} />
-          <div style={{ display:"flex", gap:6 }}>
-            <button onClick={pay} style={{ flex:1, padding:"8px 14px", background:"#10b981", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer" }}>✅ Сақлаў</button>
-            <button onClick={()=>setShow(false)} style={{ padding:"8px 14px", background:"#ef4444", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer" }}>✕</button>
-          </div>
+        <div style={{ display:"flex", gap:6, marginTop:6 }}>
+          <input type="number" placeholder="Сумма" value={amt} onChange={e=>setAmt(e.target.value)}
+            style={{ flex:1, padding:"8px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13 }} />
+          <button onClick={pay} style={{ padding:"8px 14px", background:"#10b981", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer" }}>✅</button>
+          <button onClick={()=>setShow(false)} style={{ padding:"8px 14px", background:"#ef4444", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer" }}>✕</button>
         </div>
       )}
     </div>
@@ -888,7 +873,7 @@ function Requests({ profile, products }) {
 
 // ─── STATS ────────────────────────────────────────────────────────
 function Stats() {
-  const [days7, setDays7]     = useState([]);
+  const [days7, setDays7]   = useState([]);
   const [pieData, setPieData] = useState([]);
   const [monthly, setMonthly] = useState([]);
 
@@ -896,28 +881,18 @@ function Stats() {
     const d7 = Array.from({length:7},(_,i)=>{
       const d=new Date(); d.setDate(d.getDate()-6+i); return d.toISOString().slice(0,10);
     });
-    // 7 күнлик
-    supabase.from("sales").select("date,total").gte("date",d7[0])
+    supabase.from("sales").select("date,total,payment_type").gte("date",d7[0])
       .then(({ data }) => {
         const map={};
         (data||[]).forEach(s=>{ map[s.date]=(map[s.date]||0)+Number(s.total); });
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
-    // Пирог — ҳәмме ўақыттағы сатыў
-    supabase.from("sale_items").select("product_name, qty")
+    supabase.from("sale_items").select("product_name, qty, buy_price, sell_price")
       .then(({ data }) => {
         const map={};
-        (data||[]).forEach(i=>{
-          const name = i.product_name || "Белгисиз";
-          map[name] = (map[name]||0) + Number(i.qty||0);
-        });
-        const sorted = Object.entries(map)
-          .sort((a,b)=>b[1]-a[1])
-          .slice(0,6)
-          .map(([name,value])=>({name, value: Math.round(value)}));
-        setPieData(sorted);
+        (data||[]).forEach(i=>{ map[i.product_name]=(map[i.product_name]||0)+i.qty; });
+        setPieData(Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,value])=>({name,value})));
       });
-    // Айлық
     supabase.from("sales").select("date,total")
       .then(({ data }) => {
         const map={};
@@ -978,10 +953,9 @@ function Stats() {
 
 // ─── REPORTS ─────────────────────────────────────────────────────
 function Reports({ profile, products }) {
-  const [period, setPeriod]   = useState("today");
-  const [sales, setSales]     = useState([]);
-  const [items, setItems]     = useState([]);
-  const [handovers, setHandovers] = useState([]);
+  const [period, setPeriod]  = useState("today");
+  const [sales, setSales]    = useState([]);
+  const [items, setItems]    = useState([]);
   const [closing, setClosing] = useState(false);
   const [closeMsg, setCloseMsg] = useState("");
 
@@ -996,17 +970,13 @@ function Reports({ profile, products }) {
         const allItems = (data||[]).flatMap(s => s.sale_items || []);
         setItems(allItems);
       });
-    supabase.from("cash_handovers").select("*").gte("date", filter)
-      .then(({ data }) => setHandovers(data || []));
   }, [period]);
 
-  const revenue    = sales.reduce((s,x)=>s+Number(x.total),0);
-  const cost       = items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
-  const profit     = revenue - cost;
-  const byPay      = { cash:0, card:0, qr:0, debt:0 };
+  const revenue = sales.reduce((s,x)=>s+Number(x.total),0);
+  const cost    = items.reduce((s,x)=>s+x.qty*x.buy_price,0);
+  const profit  = revenue - cost;
+  const byPay   = { cash:0, card:0, qr:0, debt:0 };
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
-  const totalHandover = handovers.reduce((s,h)=>s+Number(h.amount),0);
-  const cashInRegister = byPay.cash - totalHandover;
 
   const downloadStock = () => {
     const blob = exportStock(products);
@@ -1042,10 +1012,8 @@ function Reports({ profile, products }) {
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <Card icon="💰" label="Сатыў" value={fmt(revenue)} color="#10b981" />
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b" />
-        <Card icon="📦" label="Шығын (өзиндей)" value={fmt(cost)} color="#ef4444" />
-        <Card icon="🛒" label="Сатыўлар саны" value={sales.length+" рет"} color="#3b82f6" />
-        <Card icon="🏦" label="Кассадагы нақт" value={fmt(cashInRegister)} color="#10b981" />
-        <Card icon="💸" label="Тапсырылған" value={fmt(totalHandover)} color="#8b5cf6" />
+        <Card icon="📦" label="Шығын" value={fmt(cost)} color="#ef4444" />
+        <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6" />
       </div>
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
         <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Төлем түрлери</div>
