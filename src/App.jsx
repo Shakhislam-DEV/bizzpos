@@ -948,7 +948,11 @@ function Stats() {
               <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
                 {pieData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
               </Pie>
-              <Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
+              <Tooltip 
+  contentStyle={{background:"#1e293b", border:"1px solid #f59e0b", borderRadius:8, color:"#e2e8f0"}}
+  itemStyle={{color:"#e2e8f0"}}
+  labelStyle={{color:"#f59e0b"}}
+/>
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
