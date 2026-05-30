@@ -45,7 +45,7 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
+      body{font-family:monospace;font-size:15px;width:95%;margin:0;padding:2px}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -921,7 +921,7 @@ function Stats() {
         (data||[]).forEach(s=>{ map[s.date]=(map[s.date]||0)+Number(s.total); });
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
-    supabase.from("sale_items").select("product_name, qty")
+    supabase.from("sale_items").select("product_name, qty, sell_price")
       .then(({ data }) => {
         const map={};
         (data||[]).forEach(i=>{ map[i.product_name]=(map[i.product_name]||0)+i.qty; });
@@ -999,8 +999,11 @@ function Reports({ profile, products }) {
       : new Date(Date.now()-30*86400000).toISOString().slice(0,10);
     supabase.from("sales").select("*").gte("date", filter)
       .then(({ data }) => setSales(data || []));
-    supabase.from("sale_items").select("*, sales!inner(date)").gte("sales.date", filter)
-      .then(({ data }) => setItems(data || []));
+    supabase.from("sales").select("*, sale_items(*)").gte("date", filter)
+  .then(({ data }) => {
+    const allItems = (data||[]).flatMap(s => s.sale_items || []);
+    setItems(allItems);
+  });
   }, [period]);
 
   const revenue = sales.reduce((s,x)=>s+Number(x.total),0);
