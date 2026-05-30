@@ -45,7 +45,9 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
+      body{font-family:monospace;font-size:11px;width:58mm;margin:0 auto;padding:2px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+td{padding:1px 0;font-size:10px;word-break:break-all}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -415,10 +417,6 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
     if (payType === "debt" && clientId) {
       const cl = clients.find(c => c.id === +clientId);
       if (cl) await supabase.from("clients").update({ debt: cl.debt + total }).eq("id", cl.id);
-      await supabase.from("client_history").insert({
-        client_id: +clientId, type: "debt",
-        amount: total, comment: comment||null, date
-      });
       refreshClients();
     }
     await printReceipt(sale, cart);
@@ -741,13 +739,12 @@ function DebtPayment({ client, onPaid }) {
     if (!amt) return;
     const newDebt = Math.max(0, client.debt - +amt);
     await supabase.from("clients").update({ debt: newDebt }).eq("id", client.id);
-    await supabase.from("client_history").insert({
-      client_id: client.id, type: "payment",
-      amount: +amt, comment: comment||null, date
-    });
+    // Касса жазыўы — қарыз төлеў
     await supabase.from("cash_handovers").insert({
-      seller_id: null, amount: +amt,
-      comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
+      seller_id: null,
+      amount: +amt,
+      comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`,
+      date
     });
     setAmt(""); setComment(""); setShow(false);
     onPaid();
@@ -778,46 +775,10 @@ function DebtPayment({ client, onPaid }) {
   );
 }
 
-// ─── CLIENT HISTORY ──────────────────────────────────────────────
-function ClientHistory({ client }) {
-  const [list, setList] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.from("client_history").select("*")
-      .eq("client_id", client.id)
-      .order("date", { ascending: false })
-      .then(({ data }) => { setList(data || []); setLoading(false); });
-  }, [client.id]);
-
-  return (
-    <div style={{ marginTop:10, borderTop:"1px solid #334155", paddingTop:10 }}>
-      <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:12 }}>📋 Тарийх</div>
-      {loading && <div style={{ color:"#64748b", fontSize:12 }}>Жүктелип атыр…</div>}
-      {!loading && list.length === 0 && <div style={{ color:"#475569", fontSize:12 }}>Тарийх жоқ</div>}
-      {list.map(h => (
-        <div key={h.id} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
-          <div>
-            <span style={{ color: h.type==="payment" ? "#10b981" : "#ef4444" }}>
-              {h.type==="payment" ? "✅ Төлеў" : "📒 Қарыз"}
-            </span>
-            {h.comment && <span style={{ color:"#64748b", marginLeft:6 }}>— {h.comment}</span>}
-          </div>
-          <div style={{ textAlign:"right" }}>
-            <div style={{ fontWeight:700, color: h.type==="payment"?"#10b981":"#ef4444" }}>{fmt(h.amount)}</div>
-            <div style={{ fontSize:10, color:"#475569" }}>{h.date}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 // ─── CLIENTS ────────────────────────────────────────────────────
 function Clients({ clients, refreshClients }) {
-  const [form, setForm]       = useState({ name:"", phone:"" });
-  const [msg, setMsg]         = useState("");
-  const [openId, setOpenId]   = useState(null);
+  const [form, setForm]  = useState({ name:"", phone:"" });
+  const [msg, setMsg]    = useState("");
 
   const submit = async () => {
     if (!form.name) return;
@@ -841,10 +802,9 @@ function Clients({ clients, refreshClients }) {
       </div>
       {clients.map(c => (
         <div key={c.id} style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", cursor:"pointer" }}
-            onClick={()=>setOpenId(openId===c.id ? null : c.id)}>
+          <div style={{ display:"flex", justifyContent:"space-between" }}>
             <div>
-              <div style={{ fontWeight:600 }}>{c.name} <span style={{ fontSize:11, color:"#64748b" }}>{openId===c.id?"▲":"▼"}</span></div>
+              <div style={{ fontWeight:600 }}>{c.name}</div>
               {c.phone && <div style={{ fontSize:12, color:"#64748b" }}>📞 {c.phone}</div>}
             </div>
             <div style={{ textAlign:"right" }}>
@@ -853,7 +813,6 @@ function Clients({ clients, refreshClients }) {
             </div>
           </div>
           {c.debt > 0 && <DebtPayment client={c} onPaid={refreshClients} />}
-          {openId === c.id && <ClientHistory client={c} />}
         </div>
       ))}
     </div>
@@ -933,6 +892,7 @@ function Requests({ profile, products }) {
 function Stats() {
   const [days7, setDays7]     = useState([]);
   const [pieData, setPieData] = useState([]);
+  const [pieSumData, setPieSumData] = useState([]);
   const [monthly, setMonthly] = useState([]);
 
   useEffect(() => {
@@ -947,7 +907,7 @@ function Stats() {
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
     // Пирог — ҳәмме ўақыттағы сатыў
-    supabase.from("sale_items").select("product_name, qty")
+    supabase.from("sale_items").select("product_name, qty, sell_price")
       .then(({ data }) => {
         const map={};
         (data||[]).forEach(i=>{
@@ -959,6 +919,16 @@ function Stats() {
           .slice(0,6)
           .map(([name,value])=>({name, value: Math.round(value)}));
         setPieData(sorted);
+        const sumMap={};
+(data||[]).forEach(i=>{
+  const name = i.product_name || "Белгисиз";
+  sumMap[name] = (sumMap[name]||0) + Number(i.qty||0)*Number(i.sell_price||0);
+});
+const sortedSum = Object.entries(sumMap)
+  .sort((a,b)=>b[1]-a[1])
+  .slice(0,6)
+  .map(([name,value])=>({name, value: Math.round(value)}));
+setPieSumData(sortedSum);
       });
     // Айлық
     supabase.from("sales").select("date,total")
@@ -988,10 +958,16 @@ function Stats() {
           <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>🏆 Товар үлеси</div>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
+  label={({name, percent}) => `${name} ${(percent*100).toFixed(0)}%`}
+  labelLine={false}>
                 {pieData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
               </Pie>
-              <Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
+              <Tooltip 
+  contentStyle={{background:"#1e293b", border:"1px solid #f59e0b", borderRadius:8, color:"#e2e8f0"}}
+  itemStyle={{color:"#e2e8f0"}}
+  labelStyle={{color:"#f59e0b"}}
+/>
             </PieChart>
           </ResponsiveContainer>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
@@ -1001,6 +977,28 @@ function Stats() {
           </div>
         </div>
       )}
+      {pieSumData.length > 0 && (
+  <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
+    <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:12, fontSize:13 }}>💰 Товар сумма үлеси</div>
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Pie data={pieSumData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
+          label={({name, percent}) => `${name} ${(percent*100).toFixed(0)}%`}
+          labelLine={false}>
+          {pieSumData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
+        </Pie>
+        <Tooltip formatter={v=>fmt(v)}
+          contentStyle={{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"}}
+          itemStyle={{color:"#e2e8f0"}} />
+      </PieChart>
+    </ResponsiveContainer>
+    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+      {pieSumData.map((d,i)=>(
+        <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length] }}>● {d.name}</div>
+      ))}
+    </div>
+  </div>
+)}
       {monthly.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
           <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:12, fontSize:13 }}>📆 Айлық сатыў</div>
@@ -1099,20 +1097,6 @@ function Reports({ profile, products }) {
           </div>
         ))}
       </div>
-      {handovers.length > 0 && (
-        <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#8b5cf6", marginBottom:8, fontSize:13 }}>💸 Тапсырыў тарийхы</div>
-          {handovers.map(h => (
-            <div key={h.id} style={{ padding:"6px 0", borderBottom:"1px solid #0f172a" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
-                <span style={{ color:"#94a3b8" }}>{h.date}</span>
-                <span style={{ fontWeight:700, color:"#8b5cf6" }}>{fmt(h.amount)}</span>
-              </div>
-              {h.comment && <div style={{ fontSize:11, color:"#64748b" }}>💬 {h.comment}</div>}
-            </div>
-          ))}
-        </div>
-      )}
       <button onClick={downloadStock} style={{ padding:12, background:"#1e293b", border:"1px solid #334155", borderRadius:10, color:"#e2e8f0", cursor:"pointer", fontWeight:700, fontSize:13 }}>
         📥 Қалдық товар Excel жүклеў
       </button>
