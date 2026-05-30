@@ -45,7 +45,9 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
+      body{font-family:monospace;font-size:11px;width:58mm;margin:0 auto;padding:2px}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+td{padding:1px 0;font-size:10px;word-break:break-all}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -890,6 +892,7 @@ function Requests({ profile, products }) {
 function Stats() {
   const [days7, setDays7]     = useState([]);
   const [pieData, setPieData] = useState([]);
+  const [pieSumData, setPieSumData] = useState([]);
   const [monthly, setMonthly] = useState([]);
 
   useEffect(() => {
@@ -904,7 +907,7 @@ function Stats() {
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
     // Пирог — ҳәмме ўақыттағы сатыў
-    supabase.from("sale_items").select("product_name, qty")
+    supabase.from("sale_items").select("product_name, qty, sell_price")
       .then(({ data }) => {
         const map={};
         (data||[]).forEach(i=>{
@@ -916,6 +919,16 @@ function Stats() {
           .slice(0,6)
           .map(([name,value])=>({name, value: Math.round(value)}));
         setPieData(sorted);
+        const sumMap={};
+(data||[]).forEach(i=>{
+  const name = i.product_name || "Белгисиз";
+  sumMap[name] = (sumMap[name]||0) + Number(i.qty||0)*Number(i.sell_price||0);
+});
+const sortedSum = Object.entries(sumMap)
+  .sort((a,b)=>b[1]-a[1])
+  .slice(0,6)
+  .map(([name,value])=>({name, value: Math.round(value)}));
+setPieSumData(sortedSum);
       });
     // Айлық
     supabase.from("sales").select("date,total")
@@ -964,6 +977,28 @@ function Stats() {
           </div>
         </div>
       )}
+      {pieSumData.length > 0 && (
+  <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
+    <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:12, fontSize:13 }}>💰 Товар сумма үлеси</div>
+    <ResponsiveContainer width="100%" height={200}>
+      <PieChart>
+        <Pie data={pieSumData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}
+          label={({name, percent}) => `${name} ${(percent*100).toFixed(0)}%`}
+          labelLine={false}>
+          {pieSumData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
+        </Pie>
+        <Tooltip formatter={v=>fmt(v)}
+          contentStyle={{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"}}
+          itemStyle={{color:"#e2e8f0"}} />
+      </PieChart>
+    </ResponsiveContainer>
+    <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+      {pieSumData.map((d,i)=>(
+        <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length] }}>● {d.name}</div>
+      ))}
+    </div>
+  </div>
+)}
       {monthly.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
           <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:12, fontSize:13 }}>📆 Айлық сатыў</div>
