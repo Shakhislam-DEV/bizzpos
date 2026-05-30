@@ -745,10 +745,10 @@ function DebtPayment({ client, onPaid }) {
       client_id: client.id, type: "payment",
       amount: +amt, comment: comment||null, date
     });
-    await supabase.from("cash_handovers").insert({
-      seller_id: null, amount: +amt,
-      comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
-    });
+    //await supabase.from("cash_handovers").insert({
+      //seller_id: null, amount: +amt,
+      //comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
+      //});
     setAmt(""); setComment(""); setShow(false);
     onPaid();
   };
@@ -1072,7 +1072,11 @@ function Reports({ profile, products }) {
   const byPay      = { cash:0, card:0, qr:0, debt:0 };
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
   const totalHandover = handovers.reduce((s,h)=>s+Number(h.amount),0);
-  const cashInRegister = byPay.cash - totalHandover;
+  //const cashInRegister = byPay.cash - totalHandover;
+  // Қарыз төлеўлерди алайық
+const debtPayments = handovers.filter(h => h.comment?.startsWith("Қарыз төлеў")).reduce((s,h)=>s+Number(h.amount),0);
+const realHandovers = totalHandover - debtPayments;
+const cashInRegister = byPay.cash + debtPayments - realHandovers;
 
   const downloadStock = () => {
     const blob = exportStock(products);
