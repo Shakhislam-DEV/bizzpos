@@ -931,11 +931,9 @@ function Requests({ profile, products }) {
 
 // ─── STATS ────────────────────────────────────────────────────────
 function Stats() {
-  const [days7, setDays7]         = useState([]);
-  const [pieQty, setPieQty]       = useState([]);
-  const [pieSum, setPieSum]       = useState([]);
-  const [pieProfit, setPieProfit] = useState([]);
-  const [monthly, setMonthly]     = useState([]);
+  const [days7, setDays7]     = useState([]);
+  const [pieData, setPieData] = useState([]);
+  const [monthly, setMonthly] = useState([]);
 
   useEffect(() => {
     const d7 = Array.from({length:7},(_,i)=>{
@@ -948,26 +946,19 @@ function Stats() {
         (data||[]).forEach(s=>{ map[s.date]=(map[s.date]||0)+Number(s.total); });
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
-    // Пирог диаграммалар
-    supabase.from("sale_items").select("product_name, qty, sell_price, buy_price")
+    // Пирог — ҳәмме ўақыттағы сатыў
+    supabase.from("sale_items").select("product_name, qty")
       .then(({ data }) => {
-        const qtyMap={}, sumMap={}, profitMap={};
-        let totalProfit = 0;
+        const map={};
         (data||[]).forEach(i=>{
           const name = i.product_name || "Белгисиз";
-          const qty = Number(i.qty||0);
-          const sell = Number(i.sell_price||0);
-          const buy = Number(i.buy_price||0);
-          const profit = (sell - buy) * qty;
-          qtyMap[name]    = (qtyMap[name]||0) + qty;
-          sumMap[name]    = (sumMap[name]||0) + sell * qty;
-          profitMap[name] = (profitMap[name]||0) + profit;
-          totalProfit += profit;
+          map[name] = (map[name]||0) + Number(i.qty||0);
         });
-        const mkPie = (map) => Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,value])=>({name,value:Math.round(value)}));
-        setPieQty(mkPie(qtyMap));
-        setPieSum(mkPie(sumMap));
-        setPieProfit(mkPie(profitMap));
+        const sorted = Object.entries(map)
+          .sort((a,b)=>b[1]-a[1])
+          .slice(0,6)
+          .map(([name,value])=>({name, value: Math.round(value)}));
+        setPieData(sorted);
       });
     // Айлық
     supabase.from("sales").select("date,total")
@@ -978,33 +969,6 @@ function Stats() {
       });
   }, []);
 
-  const tooltipStyle = { contentStyle:{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"}, itemStyle:{color:"#e2e8f0"}, labelStyle:{color:"#f59e0b"} };
-
-  const PieBlock = ({ data, title, formatter }) => (
-    data.length > 0 ? (
-      <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
-        <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>{title}</div>
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
-              label={({name, percent}) => `${(percent*100).toFixed(0)}%`}
-              labelLine={true}>
-              {data.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
-            </Pie>
-            <Tooltip formatter={formatter||((v)=>v)} {...tooltipStyle} />
-          </PieChart>
-        </ResponsiveContainer>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:4 }}>
-          {data.map((d,i)=>(
-            <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length], background:"#0f172a", padding:"2px 8px", borderRadius:6 }}>
-              ● {d.name}: {formatter ? formatter(d.value) : d.value}
-            </div>
-          ))}
-        </div>
-      </div>
-    ) : null
-  );
-
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
@@ -1014,16 +978,29 @@ function Stats() {
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="date" tick={{fill:"#94a3b8",fontSize:11}} />
             <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
-            <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
+            <Tooltip formatter={v=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
             <Bar dataKey="rev" fill="#f59e0b" radius={[4,4,0,0]} name="Сатыў" />
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      <PieBlock data={pieQty} title="🏆 Товар үлеси (саны бойынша)" formatter={v=>v+" дана"} />
-      <PieBlock data={pieSum} title="💰 Товар үлеси (сумма бойынша)" formatter={fmt} />
-      <PieBlock data={pieProfit} title="📈 Товар үлеси (пайда бойынша)" formatter={fmt} />
-
+      {pieData.length > 0 && (
+        <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
+          <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>🏆 Товар үлеси</div>
+          <ResponsiveContainer width="100%" height={200}>
+            <PieChart>
+              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
+                {pieData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
+              </Pie>
+              <Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
+            {pieData.map((d,i)=>(
+              <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length] }}>● {d.name}</div>
+            ))}
+          </div>
+        </div>
+      )}
       {monthly.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
           <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:12, fontSize:13 }}>📆 Айлық сатыў</div>
@@ -1032,7 +1009,7 @@ function Stats() {
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="month" tick={{fill:"#94a3b8",fontSize:11}} />
               <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
-              <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
+              <Tooltip formatter={v=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
               <Line type="monotone" dataKey="rev" stroke="#3b82f6" strokeWidth={2} dot={{fill:"#3b82f6"}} name="Сатыў" />
             </LineChart>
           </ResponsiveContainer>
