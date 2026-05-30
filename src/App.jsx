@@ -45,7 +45,7 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:13px;width:58mm;margin:0;padding:4px}
+      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -760,6 +760,37 @@ function Products({ products, categories, refreshProducts }) {
 }
 
 // ─── CLIENTS ────────────────────────────────────────────────────
+function DebtPayment({ client, onPaid }) {
+  const [amt, setAmt] = useState("");
+  const [show, setShow] = useState(false);
+
+  const pay = async () => {
+    if (!amt) return;
+    const newDebt = Math.max(0, client.debt - +amt);
+    await supabase.from("clients").update({ debt: newDebt }).eq("id", client.id);
+    setAmt(""); setShow(false);
+    onPaid();
+  };
+
+  return (
+    <div style={{ marginTop:8 }}>
+      {!show ? (
+        <button onClick={()=>setShow(true)}
+          style={{ padding:"6px 14px", background:"#10b981", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer", fontSize:12 }}>
+          💵 Қарыз төлеў
+        </button>
+      ) : (
+        <div style={{ display:"flex", gap:6, marginTop:6 }}>
+          <input type="number" placeholder="Сумма" value={amt} onChange={e=>setAmt(e.target.value)}
+            style={{ flex:1, padding:"8px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13 }} />
+          <button onClick={pay} style={{ padding:"8px 14px", background:"#10b981", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer" }}>✅</button>
+          <button onClick={()=>setShow(false)} style={{ padding:"8px 14px", background:"#ef4444", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer" }}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Clients({ clients, refreshClients }) {
   const [form, setForm]  = useState({ name:"", phone:"" });
   const [msg, setMsg]    = useState("");
@@ -785,19 +816,22 @@ function Clients({ clients, refreshClients }) {
         <Btn label="Қосыў" onClick={submit} />
       </div>
       {clients.map(c => (
-        <div key={c.id} style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between" }}>
-            <div>
-              <div style={{ fontWeight:600 }}>{c.name}</div>
-              {c.phone && <div style={{ fontSize:12, color:"#64748b" }}>📞 {c.phone}</div>}
-            </div>
-            <div style={{ textAlign:"right" }}>
-              <div style={{ fontWeight:700, color:c.debt>0?"#ef4444":"#10b981", fontSize:14 }}>{fmt(c.debt)}</div>
-              <div style={{ fontSize:10, color:"#64748b" }}>қарыз</div>
-            </div>
-          </div>
-        </div>
-      ))}
+  <div key={c.id} style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
+    <div style={{ display:"flex", justifyContent:"space-between" }}>
+      <div>
+        <div style={{ fontWeight:600 }}>{c.name}</div>
+        {c.phone && <div style={{ fontSize:12, color:"#64748b" }}>📞 {c.phone}</div>}
+      </div>
+      <div style={{ textAlign:"right" }}>
+        <div style={{ fontWeight:700, color:c.debt>0?"#ef4444":"#10b981", fontSize:14 }}>{fmt(c.debt)}</div>
+        <div style={{ fontSize:10, color:"#64748b" }}>қарыз</div>
+      </div>
+    </div>
+    {c.debt > 0 && (
+      <DebtPayment client={c} onPaid={refreshClients} />
+    )}
+  </div>
+))}
     </div>
   );
 }
