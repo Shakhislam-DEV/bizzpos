@@ -35,7 +35,7 @@ const now   = () => new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", mi
 const COLORS = ["#f59e0b","#10b981","#3b82f6","#ec4899","#8b5cf6","#ef4444","#14b8a6","#f97316"];
 
 const ROLES = { director: "Директор", seller: "Сатыўшы", supply: "Снабженец" };
-const PAYMENT = { cash: "💵 Нақ", card: "💳 Терминал", qr: "📱 QR", debt: "📒 Қарыз" };
+const PAYMENT = { cash: "💵 Нақт", card: "💳 Терминал", qr: "📱 QR", debt: "📒 Қарыз" };
 
 // ─── PRINT (ESC/POS via browser) ────────────────────────────────
 async function printReceipt(sale, items) {
@@ -45,7 +45,7 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:14px;width:95%;margin:1px;padding:1px}
+      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -101,14 +101,14 @@ function exportStock(products) {
     "Штрих-код": p.barcode || "",
     "Саны": p.stock,
     "Өлшем": p.unit,
-    "Кирис баҳасы": p.buy_price,
+    "Кириш баҳасы": p.buy_price,
     "Сатыў баҳасы": p.sell_price,
-    "Жәми қуны (кирис)": p.stock * p.buy_price,
+    "Жәми қуны (кириш)": p.stock * p.buy_price,
     "Жәми қуны (сатыў)": p.stock * p.sell_price,
   }));
   const totalBuy  = products.reduce((s, p) => s + p.stock * p.buy_price, 0);
   const totalSell = products.reduce((s, p) => s + p.stock * p.sell_price, 0);
-  data.push({ "Товар аты": "ЖӘМИ", "Жәми қуны (кирис)": totalBuy, "Жәми қуны (сатыў)": totalSell });
+  data.push({ "Товар аты": "ЖӘМИ", "Жәми қуны (кириш)": totalBuy, "Жәми қуны (сатыў)": totalSell });
 
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 4 },{ wch: 30 },{ wch: 15 },{ wch: 8 },{ wch: 8 },{ wch: 14 },{ wch: 14 },{ wch: 18 },{ wch: 18 }];
@@ -127,7 +127,7 @@ function downloadExcel(blob, filename) {
 
 function exportPurchaseTemplate() {
   const data = [
-    { "Товар аты": "Мысал: Шекер 1кг", "Штрих-код": "4600123456", "Саны": 100, "Кирис баҳасы": 12000, "Сатыў баҳасы": 15000, "Өлшем": "кг" },
+    { "Товар аты": "Мысал: Шекер 1кг", "Штрих-код": "4600123456", "Саны": 100, "Кириш баҳасы": 12000, "Сатыў баҳасы": 15000, "Өлшем": "кг" },
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 30 },{ wch: 15 },{ wch: 8 },{ wch: 14 },{ wch: 14 },{ wch: 8 }];
@@ -161,9 +161,9 @@ export default function App() {
       .then(({ data }) => setProfile(data));
   }, [user]);
 
-  if (loading) return <Splash text="Жүкленип атыр…" />;
+  if (loading) return <Splash text="Жүктелип атыр…" />;
   if (!user)   return <AuthPage />;
-  if (!profile) return <Splash text="Профиль жүкленип атыр…" />;
+  if (!profile) return <Splash text="Профиль жүктелип атыр…" />;
 
   return <MainApp profile={profile} />;
 }
@@ -202,7 +202,7 @@ function AuthPage() {
         {err && <div style={{ background:"#7f1d1d", color:"#fca5a5", borderRadius:8, padding:10, marginBottom:12, fontSize:13 }}>{err}</div>}
         <Inp placeholder="Email" value={email} onChange={setEmail} type="email" />
         <Inp placeholder="Парол" value={pass}  onChange={setPass}  type="password" />
-        <Btn label={load ? "Кирип атыр…" : "Кириў"} onClick={login} disabled={load} />
+        <Btn label={load ? "Кіріп атыр…" : "Кіриў"} onClick={login} disabled={load} />
       </div>
     </div>
   );
@@ -210,9 +210,9 @@ function AuthPage() {
 
 // ─── MAIN APP ────────────────────────────────────────────────────
 const NAV_ALL     = [
-  { id:"dashboard", icon:"📊", label:"Бас бет" },
+  { id:"dashboard", icon:"📊", label:"Басты бет" },
   { id:"sell",      icon:"💰", label:"Сатыў" },
-  { id:"purchase",  icon:"🛒", label:"Кирис" },
+  { id:"purchase",  icon:"🛒", label:"Кириш" },
   { id:"products",  icon:"📦", label:"Товарлар" },
   { id:"clients",   icon:"👥", label:"Клиентлер" },
   { id:"requests",  icon:"📋", label:"Сораныс" },
@@ -392,7 +392,7 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
       if (ex) return c.map(i => i.product_id===p.id ? {...i, qty:i.qty+q} : i);
       return [...c, { product_id:p.id, product_name:p.name, qty:q, sell_price:p.sell_price, buy_price:p.buy_price, unit:p.unit }];
     });
-    setQty(""); setProductId("");
+    setQty("1"); setProductId("");
   };
 
   const total = cart.reduce((s,i) => s + i.qty*i.sell_price, 0);
@@ -547,7 +547,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         product_name: r["Товар аты"] || "",
         barcode:      String(r["Штрих-код"] || ""),
         qty:          +r["Саны"] || 0,
-        buy_price:    +r["Кирис баҳасы"] || 0,
+        buy_price:    +r["Кириш баҳасы"] || 0,
         sell_price:   +r["Сатыў баҳасы"] || 0,
         unit:         r["Өлшем"] || "дана",
       })).filter(r => r.product_name && r.qty > 0);
@@ -585,10 +585,10 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         await supabase.from("products").insert({ name:i.product_name, barcode:i.barcode||null, buy_price:i.buy_price, sell_price:i.sell_price, stock:i.qty, unit:i.unit });
       }
     }
-    await sendTelegram(`📦 <b>Жаңа кирис</b>\n👤 ${profile.full_name}\n📦 ${cart.length} түр товар\n📅 ${date}`);
+    await sendTelegram(`📦 <b>Жаңа кириш</b>\n👤 ${profile.full_name}\n📦 ${cart.length} түр товар\n📅 ${date}`);
     refreshProducts();
     setCart([]); setComment("");
-    setMsg("✅ Кирис сақланды!"); setTimeout(()=>setMsg(""),3000);
+    setMsg("✅ Кириш сақланды!"); setTimeout(()=>setMsg(""),3000);
     setSaving(false);
   };
 
@@ -600,13 +600,13 @@ function Purchase({ profile, products, categories, refreshProducts }) {
           📥 Шаблон жүклеў
         </button>
         <button onClick={()=>fileRef.current.click()} style={{ flex:1, padding:10, background:"#3b82f6", border:"none", borderRadius:8, color:"#fff", cursor:"pointer", fontWeight:700, fontSize:13 }}>
-          📤 Excel-ден кирис
+          📤 Excel-ден кириш
         </button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={importExcel} style={{ display:"none" }} />
       </div>
 
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
-        <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:10 }}>🛒 Қолдан кирис</div>
+        <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:10 }}>🛒 Қолдан кириш</div>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inputStyle} />
         <SearchPicker products={products} value={productId} onChange={(id)=>{
           setProductId(id);
@@ -615,7 +615,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         }} />
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:8 }}>
           <input type="number" value={qty} onChange={e=>setQty(e.target.value)} placeholder="Саны" style={{ ...inputStyle, marginBottom:0 }} />
-          <input type="number" value={buyPrice} onChange={e=>setBuyPrice(e.target.value)} placeholder="Кирис баҳа" style={{ ...inputStyle, marginBottom:0 }} />
+          <input type="number" value={buyPrice} onChange={e=>setBuyPrice(e.target.value)} placeholder="Кириш баҳа" style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" value={sellPrice} onChange={e=>setSellPrice(e.target.value)} placeholder="Сатыў баҳа" style={{ ...inputStyle, marginBottom:0 }} />
         </div>
         <Btn label="Қосыў" onClick={addToCart} color="#3b82f6" />
@@ -623,7 +623,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
 
       {cart.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8 }}>📦 Кирис тизими ({cart.length} товар)</div>
+          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8 }}>📦 Кириш тизими ({cart.length} товар)</div>
           {cart.map((i,idx) => (
             <div key={idx} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
               <div>
@@ -635,7 +635,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
           ))}
           <Inp placeholder="Комментарий" value={comment} onChange={setComment} />
           <button onClick={submit} disabled={saving} style={{ width:"100%", padding:12, background:"#3b82f6", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer", marginTop:6 }}>
-            {saving ? "Сақланып атыр…" : "✅ Киристи сақлаў"}
+            {saving ? "Сақланып атыр…" : "✅ Кириши сақлаў"}
           </button>
         </div>
       )}
@@ -671,7 +671,7 @@ function Products({ products, categories, refreshProducts }) {
   };
 
   const del = async (id) => {
-    if (!window.confirm("Өшире аласаңба?")) return;
+    if (!window.confirm("Өшириласыңба?")) return;
     await supabase.from("products").delete().eq("id", id);
     refreshProducts();
   };
@@ -693,7 +693,7 @@ function Products({ products, categories, refreshProducts }) {
           {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-          <input type="number" placeholder="Кирис баҳасы" value={form.buy_price} onChange={e=>setForm(f=>({...f,buy_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
+          <input type="number" placeholder="Кириш баҳасы" value={form.buy_price} onChange={e=>setForm(f=>({...f,buy_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Сатыў баҳасы *" value={form.sell_price} onChange={e=>setForm(f=>({...f,sell_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Баслапқы саны" value={form.stock} onChange={e=>setForm(f=>({...f,stock:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Мин. қалдық" value={form.min_stock} onChange={e=>setForm(f=>({...f,min_stock:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
@@ -745,10 +745,6 @@ function DebtPayment({ client, onPaid }) {
       client_id: client.id, type: "payment",
       amount: +amt, comment: comment||null, date
     });
-    //await supabase.from("cash_handovers").insert({
-      //seller_id: null, amount: +amt,
-      //comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
-      //});
     setAmt(""); setComment(""); setShow(false);
     onPaid();
   };
@@ -891,7 +887,7 @@ function Requests({ profile, products }) {
   };
 
   const STATUS_COLOR = { new:"#f59e0b", ordered:"#3b82f6", done:"#10b981" };
-  const STATUS_LABEL = { new:"Жаңа", ordered:"Заказ берилди", done:"Орынланды" };
+  const STATUS_LABEL = { new:"Жаңа", ordered:"Заказ берилди", done:"Орындалды" };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -1044,12 +1040,14 @@ function Stats() {
 
 // ─── REPORTS ─────────────────────────────────────────────────────
 function Reports({ profile, products }) {
-  const [period, setPeriod]   = useState("today");
-  const [sales, setSales]     = useState([]);
-  const [items, setItems]     = useState([]);
+  const [period, setPeriod]       = useState("today");
+  const [sales, setSales]         = useState([]);
+  const [items, setItems]         = useState([]);
   const [handovers, setHandovers] = useState([]);
-  const [closing, setClosing] = useState(false);
-  const [closeMsg, setCloseMsg] = useState("");
+  const [debtPaid, setDebtPaid]   = useState(0);
+  const [showHandovers, setShowHandovers] = useState(false);
+  const [closing, setClosing]     = useState(false);
+  const [closeMsg, setCloseMsg]   = useState("");
 
   useEffect(() => {
     const filter = period === "today" ? today()
@@ -1064,19 +1062,20 @@ function Reports({ profile, products }) {
       });
     supabase.from("cash_handovers").select("*").gte("date", filter)
       .then(({ data }) => setHandovers(data || []));
+    supabase.from("client_history").select("amount").eq("type","payment").gte("date", filter)
+      .then(({ data }) => {
+        const total = (data||[]).reduce((s,h)=>s+Number(h.amount),0);
+        setDebtPaid(total);
+      });
   }, [period]);
 
-  const revenue    = sales.reduce((s,x)=>s+Number(x.total),0);
-  const cost       = items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
-  const profit     = revenue - cost;
-  const byPay      = { cash:0, card:0, qr:0, debt:0 };
+  const revenue         = sales.reduce((s,x)=>s+Number(x.total),0);
+  const cost            = items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
+  const profit          = revenue - cost;
+  const byPay           = { cash:0, card:0, qr:0, debt:0 };
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
-  const totalHandover = handovers.reduce((s,h)=>s+Number(h.amount),0);
-  //const cashInRegister = byPay.cash - totalHandover;
-  // Қарыз төлеўлерди алайық
-const debtPayments = handovers.filter(h => h.comment?.startsWith("Қарыз төлеў")).reduce((s,h)=>s+Number(h.amount),0);
-const realHandovers = totalHandover - debtPayments;
-const cashInRegister = byPay.cash + debtPayments - realHandovers;
+  const totalHandover   = handovers.reduce((s,h)=>s+Number(h.amount),0);
+  const cashInRegister  = byPay.cash + debtPaid - totalHandover;
 
   const downloadStock = () => {
     const blob = exportStock(products);
@@ -1092,7 +1091,7 @@ const cashInRegister = byPay.cash + debtPayments - realHandovers;
     });
     const blob = exportStock(products);
     await sendTelegramFile(blob, `қалдық_${today()}.xlsx`,
-      `📊 Күн жабылды — ${today()}\n💰 Сатыў: ${fmt(revenue)}\n📈 Пайда: ${fmt(profit)}\n💵 Нақ: ${fmt(byPay.cash)}\n💳 Терминал: ${fmt(byPay.card)}\n📱 QR: ${fmt(byPay.qr)}\n📒 Қарыз: ${fmt(byPay.debt)}`
+      `📊 Күн жабылды — ${today()}\n💰 Сатыў: ${fmt(revenue)}\n📈 Пайда: ${fmt(profit)}\n💵 Нақт: ${fmt(byPay.cash)}\n💳 Терминал: ${fmt(byPay.card)}\n📱 QR: ${fmt(byPay.qr)}\n📒 Қарыз: ${fmt(byPay.debt)}`
     );
     setClosing(false);
     setCloseMsg("✅ Күн жабылды! Telegram-ға жиберилди."); setTimeout(()=>setCloseMsg(""),4000);
@@ -1112,12 +1111,38 @@ const cashInRegister = byPay.cash + debtPayments - realHandovers;
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <Card icon="💰" label="Сатыў" value={fmt(revenue)} color="#10b981" />
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b" />
-        <Card icon="📦" label="Шығын (өзиндей)" value={fmt(cost)} color="#ef4444" />
-        <Card icon="🛒" label="Сатыўлар саны" value={sales.length+" рет"} color="#3b82f6" />
+        <Card icon="📦" label="Шығын" value={fmt(cost)} color="#ef4444" />
+        <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6" />
         <Card icon="🏦" label="Кассадагы нақт" value={fmt(cashInRegister)} color="#10b981" />
-        <Card icon="💸" label="Тапсырылған" value={fmt(totalHandover)} color="#8b5cf6" />
         <Card icon="📊" label="Маржа %" value={revenue ? ((profit/revenue)*100).toFixed(1)+"%" : "0%"} color="#14b8a6" />
       </div>
+
+      {/* Тапсырылған — басқанда тарийх ашылады */}
+      <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", cursor:"pointer" }}
+          onClick={()=>setShowHandovers(!showHandovers)}>
+          <div style={{ fontWeight:700, color:"#8b5cf6", fontSize:13 }}>💸 Тапсырылған</div>
+          <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+            <span style={{ fontWeight:700, color:"#8b5cf6" }}>{fmt(totalHandover)}</span>
+            <span style={{ color:"#64748b", fontSize:12 }}>{showHandovers?"▲":"▼"}</span>
+          </div>
+        </div>
+        {showHandovers && (
+          <div style={{ marginTop:10, borderTop:"1px solid #334155", paddingTop:10 }}>
+            {handovers.length === 0 && <div style={{ color:"#475569", fontSize:13 }}>Тапсырыў жоқ</div>}
+            {handovers.map(h=>(
+              <div key={h.id} style={{ padding:"6px 0", borderBottom:"1px solid #0f172a" }}>
+                <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
+                  <span style={{ color:"#94a3b8" }}>{h.date}</span>
+                  <span style={{ fontWeight:700, color:"#8b5cf6" }}>{fmt(h.amount)}</span>
+                </div>
+                {h.comment && <div style={{ fontSize:11, color:"#64748b" }}>💬 {h.comment}</div>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
         <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Төлем түрлери</div>
         {Object.entries(byPay).map(([k,v])=>(
@@ -1126,20 +1151,6 @@ const cashInRegister = byPay.cash + debtPayments - realHandovers;
           </div>
         ))}
       </div>
-      {handovers.length > 0 && (
-        <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#8b5cf6", marginBottom:8, fontSize:13 }}>💸 Тапсырыў тарийхы</div>
-          {handovers.map(h => (
-            <div key={h.id} style={{ padding:"6px 0", borderBottom:"1px solid #0f172a" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", fontSize:13 }}>
-                <span style={{ color:"#94a3b8" }}>{h.date}</span>
-                <span style={{ fontWeight:700, color:"#8b5cf6" }}>{fmt(h.amount)}</span>
-              </div>
-              {h.comment && <div style={{ fontSize:11, color:"#64748b" }}>💬 {h.comment}</div>}
-            </div>
-          ))}
-        </div>
-      )}
       <button onClick={downloadStock} style={{ padding:12, background:"#1e293b", border:"1px solid #334155", borderRadius:10, color:"#e2e8f0", cursor:"pointer", fontWeight:700, fontSize:13 }}>
         📥 Қалдық товар Excel жүклеў
       </button>

@@ -35,7 +35,7 @@ const now   = () => new Date().toLocaleTimeString("uz-UZ", { hour: "2-digit", mi
 const COLORS = ["#f59e0b","#10b981","#3b82f6","#ec4899","#8b5cf6","#ef4444","#14b8a6","#f97316"];
 
 const ROLES = { director: "Директор", seller: "Сатыўшы", supply: "Снабженец" };
-const PAYMENT = { cash: "💵 Нақт", card: "💳 Терминал", qr: "📱 QR", debt: "📒 Қарыз" };
+const PAYMENT = { cash: "💵 Нақ", card: "💳 Терминал", qr: "📱 QR", debt: "📒 Қарыз" };
 
 // ─── PRINT (ESC/POS via browser) ────────────────────────────────
 async function printReceipt(sale, items) {
@@ -45,7 +45,7 @@ async function printReceipt(sale, items) {
   ).join("");
   w.document.write(`
     <html><head><style>
-      body{font-family:monospace;font-size:12px;width:100%;margin:0;padding:4px}
+      body{font-family:monospace;font-size:14px;width:95%;margin:1px;padding:1px}
       h2{text-align:center;font-size:14px;margin:4px 0}
       p{text-align:center;margin:2px;font-size:11px}
       table{width:100%;border-collapse:collapse}
@@ -101,14 +101,14 @@ function exportStock(products) {
     "Штрих-код": p.barcode || "",
     "Саны": p.stock,
     "Өлшем": p.unit,
-    "Кириш баҳасы": p.buy_price,
+    "Кирис баҳасы": p.buy_price,
     "Сатыў баҳасы": p.sell_price,
-    "Жәми қуны (кириш)": p.stock * p.buy_price,
+    "Жәми қуны (кирис)": p.stock * p.buy_price,
     "Жәми қуны (сатыў)": p.stock * p.sell_price,
   }));
   const totalBuy  = products.reduce((s, p) => s + p.stock * p.buy_price, 0);
   const totalSell = products.reduce((s, p) => s + p.stock * p.sell_price, 0);
-  data.push({ "Товар аты": "ЖӘМИ", "Жәми қуны (кириш)": totalBuy, "Жәми қуны (сатыў)": totalSell });
+  data.push({ "Товар аты": "ЖӘМИ", "Жәми қуны (кирис)": totalBuy, "Жәми қуны (сатыў)": totalSell });
 
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 4 },{ wch: 30 },{ wch: 15 },{ wch: 8 },{ wch: 8 },{ wch: 14 },{ wch: 14 },{ wch: 18 },{ wch: 18 }];
@@ -127,7 +127,7 @@ function downloadExcel(blob, filename) {
 
 function exportPurchaseTemplate() {
   const data = [
-    { "Товар аты": "Мысал: Шекер 1кг", "Штрих-код": "4600123456", "Саны": 100, "Кириш баҳасы": 12000, "Сатыў баҳасы": 15000, "Өлшем": "кг" },
+    { "Товар аты": "Мысал: Шекер 1кг", "Штрих-код": "4600123456", "Саны": 100, "Кирис баҳасы": 12000, "Сатыў баҳасы": 15000, "Өлшем": "кг" },
   ];
   const ws = XLSX.utils.json_to_sheet(data);
   ws["!cols"] = [{ wch: 30 },{ wch: 15 },{ wch: 8 },{ wch: 14 },{ wch: 14 },{ wch: 8 }];
@@ -161,9 +161,9 @@ export default function App() {
       .then(({ data }) => setProfile(data));
   }, [user]);
 
-  if (loading) return <Splash text="Жүктелип атыр…" />;
+  if (loading) return <Splash text="Жүкленип атыр…" />;
   if (!user)   return <AuthPage />;
-  if (!profile) return <Splash text="Профиль жүктелип атыр…" />;
+  if (!profile) return <Splash text="Профиль жүкленип атыр…" />;
 
   return <MainApp profile={profile} />;
 }
@@ -202,7 +202,7 @@ function AuthPage() {
         {err && <div style={{ background:"#7f1d1d", color:"#fca5a5", borderRadius:8, padding:10, marginBottom:12, fontSize:13 }}>{err}</div>}
         <Inp placeholder="Email" value={email} onChange={setEmail} type="email" />
         <Inp placeholder="Парол" value={pass}  onChange={setPass}  type="password" />
-        <Btn label={load ? "Кіріп атыр…" : "Кіриў"} onClick={login} disabled={load} />
+        <Btn label={load ? "Кирип атыр…" : "Кириў"} onClick={login} disabled={load} />
       </div>
     </div>
   );
@@ -210,9 +210,9 @@ function AuthPage() {
 
 // ─── MAIN APP ────────────────────────────────────────────────────
 const NAV_ALL     = [
-  { id:"dashboard", icon:"📊", label:"Басты бет" },
+  { id:"dashboard", icon:"📊", label:"Бас бет" },
   { id:"sell",      icon:"💰", label:"Сатыў" },
-  { id:"purchase",  icon:"🛒", label:"Кириш" },
+  { id:"purchase",  icon:"🛒", label:"Кирис" },
   { id:"products",  icon:"📦", label:"Товарлар" },
   { id:"clients",   icon:"👥", label:"Клиентлер" },
   { id:"requests",  icon:"📋", label:"Сораныс" },
@@ -392,7 +392,7 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
       if (ex) return c.map(i => i.product_id===p.id ? {...i, qty:i.qty+q} : i);
       return [...c, { product_id:p.id, product_name:p.name, qty:q, sell_price:p.sell_price, buy_price:p.buy_price, unit:p.unit }];
     });
-    setQty("1"); setProductId("");
+    setQty(""); setProductId("");
   };
 
   const total = cart.reduce((s,i) => s + i.qty*i.sell_price, 0);
@@ -547,7 +547,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         product_name: r["Товар аты"] || "",
         barcode:      String(r["Штрих-код"] || ""),
         qty:          +r["Саны"] || 0,
-        buy_price:    +r["Кириш баҳасы"] || 0,
+        buy_price:    +r["Кирис баҳасы"] || 0,
         sell_price:   +r["Сатыў баҳасы"] || 0,
         unit:         r["Өлшем"] || "дана",
       })).filter(r => r.product_name && r.qty > 0);
@@ -585,10 +585,10 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         await supabase.from("products").insert({ name:i.product_name, barcode:i.barcode||null, buy_price:i.buy_price, sell_price:i.sell_price, stock:i.qty, unit:i.unit });
       }
     }
-    await sendTelegram(`📦 <b>Жаңа кириш</b>\n👤 ${profile.full_name}\n📦 ${cart.length} түр товар\n📅 ${date}`);
+    await sendTelegram(`📦 <b>Жаңа кирис</b>\n👤 ${profile.full_name}\n📦 ${cart.length} түр товар\n📅 ${date}`);
     refreshProducts();
     setCart([]); setComment("");
-    setMsg("✅ Кириш сақланды!"); setTimeout(()=>setMsg(""),3000);
+    setMsg("✅ Кирис сақланды!"); setTimeout(()=>setMsg(""),3000);
     setSaving(false);
   };
 
@@ -600,13 +600,13 @@ function Purchase({ profile, products, categories, refreshProducts }) {
           📥 Шаблон жүклеў
         </button>
         <button onClick={()=>fileRef.current.click()} style={{ flex:1, padding:10, background:"#3b82f6", border:"none", borderRadius:8, color:"#fff", cursor:"pointer", fontWeight:700, fontSize:13 }}>
-          📤 Excel-ден кириш
+          📤 Excel-ден кирис
         </button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls" onChange={importExcel} style={{ display:"none" }} />
       </div>
 
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
-        <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:10 }}>🛒 Қолдан кириш</div>
+        <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:10 }}>🛒 Қолдан кирис</div>
         <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inputStyle} />
         <SearchPicker products={products} value={productId} onChange={(id)=>{
           setProductId(id);
@@ -615,7 +615,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
         }} />
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:8 }}>
           <input type="number" value={qty} onChange={e=>setQty(e.target.value)} placeholder="Саны" style={{ ...inputStyle, marginBottom:0 }} />
-          <input type="number" value={buyPrice} onChange={e=>setBuyPrice(e.target.value)} placeholder="Кириш баҳа" style={{ ...inputStyle, marginBottom:0 }} />
+          <input type="number" value={buyPrice} onChange={e=>setBuyPrice(e.target.value)} placeholder="Кирис баҳа" style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" value={sellPrice} onChange={e=>setSellPrice(e.target.value)} placeholder="Сатыў баҳа" style={{ ...inputStyle, marginBottom:0 }} />
         </div>
         <Btn label="Қосыў" onClick={addToCart} color="#3b82f6" />
@@ -623,7 +623,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
 
       {cart.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8 }}>📦 Кириш тизими ({cart.length} товар)</div>
+          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8 }}>📦 Кирис тизими ({cart.length} товар)</div>
           {cart.map((i,idx) => (
             <div key={idx} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"6px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
               <div>
@@ -635,7 +635,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
           ))}
           <Inp placeholder="Комментарий" value={comment} onChange={setComment} />
           <button onClick={submit} disabled={saving} style={{ width:"100%", padding:12, background:"#3b82f6", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer", marginTop:6 }}>
-            {saving ? "Сақланып атыр…" : "✅ Кириши сақлаў"}
+            {saving ? "Сақланып атыр…" : "✅ Киристи сақлаў"}
           </button>
         </div>
       )}
@@ -671,7 +671,7 @@ function Products({ products, categories, refreshProducts }) {
   };
 
   const del = async (id) => {
-    if (!window.confirm("Өшириласыңба?")) return;
+    if (!window.confirm("Өшире аласаңба?")) return;
     await supabase.from("products").delete().eq("id", id);
     refreshProducts();
   };
@@ -693,7 +693,7 @@ function Products({ products, categories, refreshProducts }) {
           {categories.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-          <input type="number" placeholder="Кириш баҳасы" value={form.buy_price} onChange={e=>setForm(f=>({...f,buy_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
+          <input type="number" placeholder="Кирис баҳасы" value={form.buy_price} onChange={e=>setForm(f=>({...f,buy_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Сатыў баҳасы *" value={form.sell_price} onChange={e=>setForm(f=>({...f,sell_price:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Баслапқы саны" value={form.stock} onChange={e=>setForm(f=>({...f,stock:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
           <input type="number" placeholder="Мин. қалдық" value={form.min_stock} onChange={e=>setForm(f=>({...f,min_stock:e.target.value}))} style={{ ...inputStyle, marginBottom:0 }} />
@@ -745,10 +745,10 @@ function DebtPayment({ client, onPaid }) {
       client_id: client.id, type: "payment",
       amount: +amt, comment: comment||null, date
     });
-    await supabase.from("cash_handovers").insert({
-      seller_id: null, amount: +amt,
-      comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
-    });
+    //await supabase.from("cash_handovers").insert({
+      //seller_id: null, amount: +amt,
+      //comment: `Қарыз төлеў: ${client.name}${comment ? " — " + comment : ""}`, date
+      //});
     setAmt(""); setComment(""); setShow(false);
     onPaid();
   };
@@ -891,7 +891,7 @@ function Requests({ profile, products }) {
   };
 
   const STATUS_COLOR = { new:"#f59e0b", ordered:"#3b82f6", done:"#10b981" };
-  const STATUS_LABEL = { new:"Жаңа", ordered:"Заказ берилди", done:"Орындалды" };
+  const STATUS_LABEL = { new:"Жаңа", ordered:"Заказ берилди", done:"Орынланды" };
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -931,9 +931,11 @@ function Requests({ profile, products }) {
 
 // ─── STATS ────────────────────────────────────────────────────────
 function Stats() {
-  const [days7, setDays7]     = useState([]);
-  const [pieData, setPieData] = useState([]);
-  const [monthly, setMonthly] = useState([]);
+  const [days7, setDays7]         = useState([]);
+  const [pieQty, setPieQty]       = useState([]);
+  const [pieSum, setPieSum]       = useState([]);
+  const [pieProfit, setPieProfit] = useState([]);
+  const [monthly, setMonthly]     = useState([]);
 
   useEffect(() => {
     const d7 = Array.from({length:7},(_,i)=>{
@@ -946,19 +948,26 @@ function Stats() {
         (data||[]).forEach(s=>{ map[s.date]=(map[s.date]||0)+Number(s.total); });
         setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
-    // Пирог — ҳәмме ўақыттағы сатыў
-    supabase.from("sale_items").select("product_name, qty")
+    // Пирог диаграммалар
+    supabase.from("sale_items").select("product_name, qty, sell_price, buy_price")
       .then(({ data }) => {
-        const map={};
+        const qtyMap={}, sumMap={}, profitMap={};
+        let totalProfit = 0;
         (data||[]).forEach(i=>{
           const name = i.product_name || "Белгисиз";
-          map[name] = (map[name]||0) + Number(i.qty||0);
+          const qty = Number(i.qty||0);
+          const sell = Number(i.sell_price||0);
+          const buy = Number(i.buy_price||0);
+          const profit = (sell - buy) * qty;
+          qtyMap[name]    = (qtyMap[name]||0) + qty;
+          sumMap[name]    = (sumMap[name]||0) + sell * qty;
+          profitMap[name] = (profitMap[name]||0) + profit;
+          totalProfit += profit;
         });
-        const sorted = Object.entries(map)
-          .sort((a,b)=>b[1]-a[1])
-          .slice(0,6)
-          .map(([name,value])=>({name, value: Math.round(value)}));
-        setPieData(sorted);
+        const mkPie = (map) => Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,value])=>({name,value:Math.round(value)}));
+        setPieQty(mkPie(qtyMap));
+        setPieSum(mkPie(sumMap));
+        setPieProfit(mkPie(profitMap));
       });
     // Айлық
     supabase.from("sales").select("date,total")
@@ -969,6 +978,33 @@ function Stats() {
       });
   }, []);
 
+  const tooltipStyle = { contentStyle:{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"}, itemStyle:{color:"#e2e8f0"}, labelStyle:{color:"#f59e0b"} };
+
+  const PieBlock = ({ data, title, formatter }) => (
+    data.length > 0 ? (
+      <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
+        <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>{title}</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <PieChart>
+            <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
+              label={({name, percent}) => `${(percent*100).toFixed(0)}%`}
+              labelLine={true}>
+              {data.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
+            </Pie>
+            <Tooltip formatter={formatter||((v)=>v)} {...tooltipStyle} />
+          </PieChart>
+        </ResponsiveContainer>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:4 }}>
+          {data.map((d,i)=>(
+            <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length], background:"#0f172a", padding:"2px 8px", borderRadius:6 }}>
+              ● {d.name}: {formatter ? formatter(d.value) : d.value}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null
+  );
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
@@ -978,29 +1014,16 @@ function Stats() {
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis dataKey="date" tick={{fill:"#94a3b8",fontSize:11}} />
             <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
-            <Tooltip formatter={v=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
+            <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
             <Bar dataKey="rev" fill="#f59e0b" radius={[4,4,0,0]} name="Сатыў" />
           </BarChart>
         </ResponsiveContainer>
       </div>
-      {pieData.length > 0 && (
-        <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
-          <div style={{ fontWeight:700, color:"#10b981", marginBottom:12, fontSize:13 }}>🏆 Товар үлеси</div>
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75}>
-                {pieData.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:8 }}>
-            {pieData.map((d,i)=>(
-              <div key={d.name} style={{ fontSize:11, color:COLORS[i%COLORS.length] }}>● {d.name}</div>
-            ))}
-          </div>
-        </div>
-      )}
+
+      <PieBlock data={pieQty} title="🏆 Товар үлеси (саны бойынша)" formatter={v=>v+" дана"} />
+      <PieBlock data={pieSum} title="💰 Товар үлеси (сумма бойынша)" formatter={fmt} />
+      <PieBlock data={pieProfit} title="📈 Товар үлеси (пайда бойынша)" formatter={fmt} />
+
       {monthly.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
           <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:12, fontSize:13 }}>📆 Айлық сатыў</div>
@@ -1009,7 +1032,7 @@ function Stats() {
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="month" tick={{fill:"#94a3b8",fontSize:11}} />
               <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
-              <Tooltip formatter={v=>fmt(v)} contentStyle={{background:"#0f172a",border:"1px solid #334155",borderRadius:8}} />
+              <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
               <Line type="monotone" dataKey="rev" stroke="#3b82f6" strokeWidth={2} dot={{fill:"#3b82f6"}} name="Сатыў" />
             </LineChart>
           </ResponsiveContainer>
@@ -1049,7 +1072,11 @@ function Reports({ profile, products }) {
   const byPay      = { cash:0, card:0, qr:0, debt:0 };
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
   const totalHandover = handovers.reduce((s,h)=>s+Number(h.amount),0);
-  const cashInRegister = byPay.cash - totalHandover;
+  //const cashInRegister = byPay.cash - totalHandover;
+  // Қарыз төлеўлерди алайық
+const debtPayments = handovers.filter(h => h.comment?.startsWith("Қарыз төлеў")).reduce((s,h)=>s+Number(h.amount),0);
+const realHandovers = totalHandover - debtPayments;
+const cashInRegister = byPay.cash + debtPayments - realHandovers;
 
   const downloadStock = () => {
     const blob = exportStock(products);
@@ -1065,7 +1092,7 @@ function Reports({ profile, products }) {
     });
     const blob = exportStock(products);
     await sendTelegramFile(blob, `қалдық_${today()}.xlsx`,
-      `📊 Күн жабылды — ${today()}\n💰 Сатыў: ${fmt(revenue)}\n📈 Пайда: ${fmt(profit)}\n💵 Нақт: ${fmt(byPay.cash)}\n💳 Терминал: ${fmt(byPay.card)}\n📱 QR: ${fmt(byPay.qr)}\n📒 Қарыз: ${fmt(byPay.debt)}`
+      `📊 Күн жабылды — ${today()}\n💰 Сатыў: ${fmt(revenue)}\n📈 Пайда: ${fmt(profit)}\n💵 Нақ: ${fmt(byPay.cash)}\n💳 Терминал: ${fmt(byPay.card)}\n📱 QR: ${fmt(byPay.qr)}\n📒 Қарыз: ${fmt(byPay.debt)}`
     );
     setClosing(false);
     setCloseMsg("✅ Күн жабылды! Telegram-ға жиберилди."); setTimeout(()=>setCloseMsg(""),4000);
