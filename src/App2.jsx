@@ -320,9 +320,7 @@ function Dashboard({ products }) {
         <Card icon="🛒" label="Сатыўлар саны" value={todaySales.length+" рет"} color="#3b82f6" />
         <Card icon="📦" label="Товар түрлери" value={products.length+" түр"} color="#8b5cf6" />
       </div>
-<label style={{ fontSize:11, color:"#94a3b8" }}>Күни</label>
-        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-         style={inputStyle} />
+
       {/* Төлем түрлери */}
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
         <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Бүгинги төлем түрлери</div>
@@ -446,6 +444,9 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
       {msg && <Alert msg={msg} />}
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
         <div style={{ fontWeight:700, color:"#10b981", marginBottom:10 }}>💰 Жаңа сатыў</div>
+        <label style={{ fontSize:11, color:"#94a3b8" }}>Күни</label>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+          style={inputStyle} />
         <SearchPicker products={products} value={productId} onChange={setProductId} />
         <div style={{ display:"flex", gap:8, marginBottom:8 }}>
           <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} placeholder="Саны"
@@ -1273,29 +1274,10 @@ function SearchPicker({ products, value, onChange }) {
                 <div style={{ fontSize:13, color:"#e2e8f0" }}>{p.name}</div>
                 {p.barcode&&<div style={{ fontSize:10, color:"#475569" }}>🔢 {p.barcode}</div>}
               </div>
-              <div>
-  <div style={{ fontSize:13, color:"#e2e8f0", fontWeight:600 }}>
-    {p.name}
-  </div>
-
-  {p.barcode && (
-    <div style={{ fontSize:11, color:"#94a3b8" }}>
-      🔢 {p.barcode}
-    </div>
-  )}
-
-  <div style={{ display:"flex", gap:12, marginTop:4 }}>
-    <span style={{ color:"#10b981", fontWeight:700 }}>
-      {fmt(p.sell_price)}
-    </span>
-
-    <span style={{
-      color:p.stock<=p.min_stock?"#ef4444":"#f59e0b"
-    }}>
-      Қалдық: {p.stock}
-    </span>
-  </div>
-</div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:12, color:"#10b981" }}>{fmt(p.sell_price)}</div>
+                <div style={{ fontSize:10, color:p.stock<=p.min_stock?"#ef4444":"#64748b" }}>қалдық: {p.stock}</div>
+              </div>
             </div>
           ))}
         </div>
@@ -1372,7 +1354,7 @@ function Btn({ label, onClick, secondary, color, disabled }) {
   return (
     <button onClick={onClick} disabled={disabled}
       style={{ width:"100%", padding:12, background:secondary?"#1e293b":(color||"#f59e0b"), border:secondary?"1px solid #334155":"none",
-        borderRadius:12, color:secondary?"#94a3b8":(color&&color!=="#f59e0b"?"#fff":"#0f172a"), fontWeight:700, cursor:"pointer", marginTop:6, fontSize:16, opacity:disabled?0.6:1 }}>
+        borderRadius:8, color:secondary?"#94a3b8":(color&&color!=="#f59e0b"?"#fff":"#0f172a"), fontWeight:700, cursor:"pointer", marginTop:6, fontSize:14, opacity:disabled?0.6:1 }}>
       {label}
     </button>
   );
