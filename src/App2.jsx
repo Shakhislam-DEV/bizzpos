@@ -289,43 +289,39 @@ function MainApp({ profile }) {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────────
-function Dashboard({ profile, products }) {
+function Dashboard({ products }) {
   const [todaySales, setTodaySales] = useState([]);
   const [todayItems, setTodayItems] = useState([]);
-  const [todayHandover, setTodayHandover] = useState(0);
 
   useEffect(() => {
     supabase.from("sales").select("*").eq("date", today()).then(({ data }) => setTodaySales(data || []));
     supabase.from("sale_items").select("*, sales!inner(date)").eq("sales.date", today())
       .then(({ data }) => setTodayItems(data || []));
-    supabase.from("cash_handovers").select("amount").eq("date", today())
-      .then(({ data }) => {
-        const total = (data||[]).reduce((s,h)=>s+Number(h.amount),0);
-        setTodayHandover(total);
-      });
   }, []);
 
   const revenue = todaySales.reduce((s, x) => s + Number(x.total), 0);
-  const cost    = todayItems.reduce((s, x) => s + Number(x.qty||0) * Number(x.buy_price||0), 0);
+  const cost    = todayItems.reduce((s, x) => s + x.qty * x.buy_price, 0);
   const profit  = revenue - cost;
   const byPay   = { cash:0, card:0, qr:0, debt:0 };
   todaySales.forEach(s => { byPay[s.payment_type] = (byPay[s.payment_type]||0) + Number(s.total); });
   const lowStock = products.filter(p => p.stock <= p.min_stock);
 
+  // top products
   const pMap = {};
   todayItems.forEach(i => { pMap[i.product_name] = (pMap[i.product_name]||0) + i.qty; });
   const top3 = Object.entries(pMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <div style={{ fontSize:13, color:"#94a3b8", fontWeight:600 }}>📅 {today()}</div>
+      <div style={{ fontSize:12, color:"#64748b" }}>📅 Бүгин: {today()}</div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
         <Card icon="💰" label="Бүгинги сатыў" value={fmt(revenue)} color="#10b981" />
         <Card icon="📈" label="Бүгинги пайда" value={fmt(profit)} color="#f59e0b" />
         <Card icon="🛒" label="Сатыўлар саны" value={todaySales.length+" рет"} color="#3b82f6" />
-        <Card icon="💸" label="Тапсырылған" value={fmt(todayHandover)} color="#8b5cf6" />
+        <Card icon="📦" label="Товар түрлери" value={products.length+" түр"} color="#8b5cf6" />
       </div>
 
+      {/* Төлем түрлери */}
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
         <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Бүгинги төлем түрлери</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
@@ -448,14 +444,14 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
       {msg && <Alert msg={msg} />}
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
         <div style={{ fontWeight:700, color:"#10b981", marginBottom:10 }}>💰 Жаңа сатыў</div>
+        <label style={{ fontSize:11, color:"#94a3b8" }}>Күни</label>
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+          style={inputStyle} />
         <SearchPicker products={products} value={productId} onChange={setProductId} />
         <div style={{ display:"flex", gap:8, marginBottom:8 }}>
           <input type="number" min="1" value={qty} onChange={e=>setQty(e.target.value)} placeholder="Саны"
             style={{ flex:1, ...inputStyle, marginBottom:0 }} />
-          <button onClick={addToCart}
-            style={{ padding:"10px 28px", background:"#10b981", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer", fontSize:16 }}>
-            ➕ Қос
-          </button>
+          <button onClick={addToCart} style={btnStyle("#10b981")}>Қос</button>
         </div>
         {/* Төлем түри */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6, marginBottom:8 }}>
@@ -1260,11 +1256,7 @@ function SearchPicker({ products, value, onChange }) {
         <div style={{ flex:1, position:"relative" }}>
           <input placeholder={selected ? selected.name : "🔍 Товар аты ямаса штрих-код..."}
             value={search} onChange={e=>{setSearch(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)}
-            style={{ width:"100%", ...inputStyle, marginBottom:0,
-              border:`1px solid ${open?"#f59e0b":"#334155"}`,
-              boxSizing:"border-box",
-              color: search ? "#e2e8f0" : "#94a3b8"
-            }} />
+            style={{ width:"100%", ...inputStyle, marginBottom:0, border:`1px solid ${open?"#f59e0b":"#334155"}`, boxSizing:"border-box" }} />
           {selected && !search && (
             <button onClick={()=>{onChange("");setSearch("");}} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:16 }}>✕</button>
           )}
@@ -1273,20 +1265,18 @@ function SearchPicker({ products, value, onChange }) {
       </div>
       {open && filtered.length > 0 && (
         <div style={{ position:"absolute", top:"calc(100% + 4px)", left:0, right:50, background:"#1e293b",
-          border:"1px solid #f59e0b", borderRadius:10, zIndex:300, maxHeight:240, overflowY:"auto", boxShadow:"0 8px 24px rgba(0,0,0,0.7)" }}>
+          border:"1px solid #334155", borderRadius:10, zIndex:300, maxHeight:220, overflowY:"auto", boxShadow:"0 8px 24px rgba(0,0,0,0.6)" }}>
           {filtered.map(p=>(
             <div key={p.id} onClick={()=>pick(p)}
               style={{ padding:"10px 14px", cursor:"pointer", borderBottom:"1px solid #0f172a",
-                background:p.id===+value?"#0f172a":"transparent" }}>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontSize:13, color:"#f1f5f9", fontWeight:600 }}>{p.name}</div>
-                  {p.barcode && <div style={{ fontSize:10, color:"#64748b" }}>🔢 {p.barcode}</div>}
-                </div>
-                <div style={{ textAlign:"right", marginLeft:8 }}>
-                  <div style={{ fontSize:13, color:"#10b981", fontWeight:700 }}>{fmt(p.sell_price)}</div>
-                  <div style={{ fontSize:10, color:p.stock<=p.min_stock?"#ef4444":"#94a3b8" }}>қалдық: {p.stock} {p.unit}</div>
-                </div>
+                background:p.id===+value?"#0f172a":"transparent", display:"flex", justifyContent:"space-between" }}>
+              <div>
+                <div style={{ fontSize:13, color:"#e2e8f0" }}>{p.name}</div>
+                {p.barcode&&<div style={{ fontSize:10, color:"#475569" }}>🔢 {p.barcode}</div>}
+              </div>
+              <div style={{ textAlign:"right" }}>
+                <div style={{ fontSize:12, color:"#10b981" }}>{fmt(p.sell_price)}</div>
+                <div style={{ fontSize:10, color:p.stock<=p.min_stock?"#ef4444":"#64748b" }}>қалдық: {p.stock}</div>
               </div>
             </div>
           ))}
