@@ -1145,7 +1145,55 @@ supabase.from("client_history").select("amount, date, comment, clients(name)").e
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b" />
         <Card icon="📦" label="Шығын" value={fmt(cost)} color="#ef4444" />
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6" />
-        <Card icon="🏦" label="Кассадагы нақт" value={fmt(cashInRegister)} color="#10b981" />
+        <div onClick={()=>setShowCashDetail(v=>!v)}
+  style={{ background:"#1e293b", borderRadius:12, padding:12, borderLeft:"3px solid #10b981", cursor:"pointer", gridColumn:"span 2" }}>
+  <div style={{ fontSize:22 }}>🏦</div>
+  <div style={{ fontSize:11, color:"#64748b", marginTop:4 }}>Кассадагы нақт (жәми) 👆</div>
+  <div style={{ fontWeight:700, color:"#10b981", fontSize:16, marginTop:2 }}>{fmt(totalCashInRegister)}</div>
+</div>
+
+{showCashDetail && (
+  <div style={{ background:"#1e293b", borderRadius:12, padding:12, gridColumn:"span 2" }}>
+    <div style={{ fontWeight:700, color:"#10b981", marginBottom:8, fontSize:13 }}>🏦 Касса тарийхы</div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #0f172a", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Жәми нақт сатыў:</span>
+      <span style={{ color:"#10b981" }}>{fmt(allCash)}</span>
+    </div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #0f172a", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Қарыз төлеўлер:</span>
+      <span style={{ color:"#10b981" }}>{fmt(allDebtPaidTotal)}</span>
+    </div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #334155", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Тапсырылған:</span>
+      <span style={{ color:"#ef4444" }}>-{fmt(allHandoverTotal)}</span>
+    </div>
+    <div style={{ marginTop:8, fontWeight:700, display:"flex", justifyContent:"space-between", fontSize:14 }}>
+      <span>Қалдық:</span>
+      <span style={{ color:"#10b981" }}>{fmt(totalCashInRegister)}</span>
+    </div>
+    <div style={{ fontWeight:600, color:"#f59e0b", margin:"10px 0 6px", fontSize:12 }}>📋 Тапсырыў тарийхы:</div>
+    {allHandovers.sort((a,b)=>b.date?.localeCompare(a.date)).map(h=>(
+      <div key={h.id} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between" }}>
+          <span style={{ color:"#94a3b8" }}>{h.date}</span>
+          <span style={{ color:"#ef4444" }}>{fmt(h.amount)}</span>
+        </div>
+        {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+      </div>
+    ))}
+    <div style={{ fontWeight:600, color:"#10b981", margin:"10px 0 6px", fontSize:12 }}>💵 Қарыз төлеў тарийхы:</div>
+    {allDebtPaid.sort((a,b)=>b.date?.localeCompare(a.date)).map((h,i)=>(
+      <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
+        <div style={{ display:"flex", justifyContent:"space-between" }}>
+          <span style={{ color:"#94a3b8" }}>{h.date}</span>
+          <span style={{ color:"#10b981" }}>{fmt(h.amount)}</span>
+        </div>
+        {h.clients?.name && <div style={{ color:"#f59e0b", fontSize:11 }}>👤 {h.clients.name}</div>}
+        {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+      </div>
+    ))}
+  </div>
+)}
         <Card icon="📊" label="Маржа %" value={revenue ? ((profit/revenue)*100).toFixed(1)+"%" : "0%"} color="#14b8a6" />
       </div>
 
