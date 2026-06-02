@@ -1107,7 +1107,7 @@ supabase.from("sales").select("total, payment_type")
   });
 supabase.from("cash_handovers").select("*")
   .then(({ data }) => setAllHandovers(data || []));
-supabase.from("client_history").select("amount, date, comment").eq("type","payment")
+supabase.from("client_history").select("amount, date, comment, clients(name)").eq("type","payment")
   .then(({ data }) => setAllDebtPaid(data || []));
 
 // Период бойынша (ҳәзиргидей):
@@ -1201,14 +1201,15 @@ supabase.from("cash_handovers").select("*").gte("date", filter)
       ))}
       <div style={{ fontWeight:600, color:"#10b981", marginTop:8, marginBottom:6, fontSize:12 }}>💵 Қарыз төлеў тарийхы:</div>
       {allDebtPaid.sort((a,b)=>b.date?.localeCompare(a.date)).map((h,i)=>(
-        <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between" }}>
-            <span style={{ color:"#94a3b8" }}>{h.date}</span>
-            <span style={{ color:"#10b981" }}>{fmt(h.amount)}</span>
-          </div>
-          {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
-        </div>
-      ))}
+  <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
+    <div style={{ display:"flex", justifyContent:"space-between" }}>
+      <span style={{ color:"#94a3b8" }}>{h.date}</span>
+      <span style={{ color:"#10b981" }}>{fmt(h.amount)}</span>
+    </div>
+    {h.clients?.name && <div style={{ color:"#f59e0b", fontSize:11 }}>👤 {h.clients.name}</div>}
+    {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+  </div>
+))}
     </div>
   </div>
 )}
