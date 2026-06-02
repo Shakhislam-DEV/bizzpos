@@ -448,6 +448,39 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients, sel
 
   const submitHandover = async () => {
   if (!handoverAmt) return;
+  
+  // Кассадағы жәми есаплаў
+  const { data: allSalesData } = await supabase.from("sales").select("total").eq("payment_type","cash");
+  const { data: allHandData }  = await supabase.from("cash_handovers").select("amount");
+  const { data: allDebtData }  = await supabase.from("client_history").select("amount").eq("type","payment");
+  
+  const totalCash = (allSalesData||[]).reduce((s,x)=>s+Number(x.total),0);
+  const totalHand = (allHandData||[]).reduce((s,x)=>s+Number(x.amount),0);
+  const totalDebt = (allDebtData||[]).reduce((s,x)=>s+Number(x.amount),0);
+  const available = totalCash + totalDebt - totalHand;
+
+  // ⛔ Кассадан көп болса — тоқтатамыз
+  if (+handoverAmt > available) {
+    setHandoverMsg(`❌ Кассада тек ${fmt(available)} бар!`);
+    setTimeout(()=>setHandoverMsg(""),4000);
+    return; // ← бул жерде тоқтайды, жазылмайды
+  }
+
+  const remaining = available - +handoverAmt;
+  
+  await supabase.from("cash_handovers").insert({ 
+    seller_id: profile.id, 
+    amount: +handoverAmt, 
+    comment: handoverComment, 
+    date: today() 
+  });
+  await sendTelegram(`💵 <b>Касса тапсырылды</b>\n👤 ${profile.full_name}\n💰 Тапсырылды: ${fmt(handoverAmt)}\n🏦 Кассада қалды: ${fmt(remaining)}\n💬 ${handoverComment||"—"}`);
+  
+  setHandoverAmt(""); 
+  setHandoverComment("");
+  setHandoverMsg("✅ Тапсырылды! Қалдық: " + fmt(remaining)); 
+  setTimeout(()=>setHandoverMsg(""),4000);
+};
   // Кассадағы жәми есаплаў
   const { data: allSalesData } = await supabase.from("sales").select("total").eq("payment_type","cash");
   const { data: allHandData }  = await supabase.from("cash_handovers").select("amount");
