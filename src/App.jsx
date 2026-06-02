@@ -1068,6 +1068,10 @@ function Reports({ profile, products }) {
   const [showHandovers, setShowHandovers] = useState(false);
   const [closing, setClosing]     = useState(false);
   const [closeMsg, setCloseMsg]   = useState("");
+  const [allCash, setAllCash]               = useState(0);
+  const [allHandovers, setAllHandovers]     = useState([]);
+  const [allDebtPaid, setAllDebtPaid]       = useState([]);
+  const [showCashDetail, setShowCashDetail] = useState(false);
 
   useEffect(() => {
     const filter = period === "today" ? today()
@@ -1087,6 +1091,12 @@ function Reports({ profile, products }) {
         const total = (data||[]).reduce((s,h)=>s+Number(h.amount),0);
         setDebtPaid(total);
       });
+      supabase.from("sales").select("total").eq("payment_type","cash")
+  .then(({ data }) => setAllCash((data||[]).reduce((s,x)=>s+Number(x.total),0)));
+supabase.from("cash_handovers").select("*")
+  .then(({ data }) => setAllHandovers(data || []));
+supabase.from("client_history").select("amount, date, comment, clients(name)").eq("type","payment")
+  .then(({ data }) => setAllDebtPaid(data || []));
   }, [period]);
 
   const revenue         = sales.reduce((s,x)=>s+Number(x.total),0);
@@ -1096,9 +1106,11 @@ function Reports({ profile, products }) {
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
   const totalHandover   = handovers.reduce((s,h)=>s+Number(h.amount),0);
   const cashInRegister  = byPay.cash + debtPaid - totalHandover;
-
+  const allHandoverTotal = allHandovers.reduce((s,h)=>s+Number(h.amount),0);
+  const allDebtPaidTotal = allDebtPaid.reduce((s,h)=>s+Number(h.amount),0);
+  const totalCashInRegister = allCash + allDebtPaidTotal - allHandoverTotal;
   const downloadStock = () => {
-    const blob = exportStock(products);
+  const blob = exportStock(products);
     downloadExcel(blob, `қалдық_${today()}.xlsx`);
   };
 
