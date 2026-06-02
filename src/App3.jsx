@@ -228,8 +228,7 @@ const NAV_ROLES = {
 };
 
 function MainApp({ profile }) {
-  const [tab, setTab]           = useState("dashboard");
-  const [selDate, setSelDate]   = useState(today());
+  const [tab, setTab] = useState("dashboard");
   const [products,  setProducts]  = useState([]);
   const [clients,   setClients]   = useState([]);
   const [categories, setCategories] = useState([]);
@@ -256,6 +255,7 @@ function MainApp({ profile }) {
 
   return (
     <div style={{ fontFamily:"'Segoe UI',sans-serif", background:"#0f172a", minHeight:"100vh", color:"#e2e8f0", paddingBottom:72 }}>
+      {/* Header */}
       <div style={{ background:"linear-gradient(135deg,#1e3a5f,#0f172a)", padding:"12px 16px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid #1e293b" }}>
         <div style={{ display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:26 }}>🏪</span>
@@ -267,12 +267,13 @@ function MainApp({ profile }) {
         <button onClick={logout} style={{ background:"none", border:"1px solid #334155", borderRadius:8, color:"#64748b", padding:"6px 12px", cursor:"pointer", fontSize:12 }}>Шығыў</button>
       </div>
 
+      {/* Content */}
       <div style={{ padding:"14px 12px" }}>
         <Page profile={profile} products={products} clients={clients} categories={categories}
-          setProducts={setProducts} refreshProducts={refreshProducts} refreshClients={refreshClients}
-          selDate={selDate} setSelDate={setSelDate} />
+          setProducts={setProducts} refreshProducts={refreshProducts} refreshClients={refreshClients} />
       </div>
 
+      {/* Bottom Nav */}
       <div style={{ position:"fixed", bottom:0, left:0, right:0, background:"#0f172a", borderTop:"1px solid #1e293b", display:"flex", zIndex:100, overflowX:"auto" }}>
         {nav.map(n => (
           <button key={n.id} onClick={() => setTab(n.id)}
@@ -288,54 +289,45 @@ function MainApp({ profile }) {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────────
-function Dashboard({ profile, products, selDate, setSelDate }) {
-  const [sales, setSales]       = useState([]);
-  const [items, setItems]       = useState([]);
-  const [handover, setHandover] = useState(0);
+function Dashboard({ profile, products }) {
+  const [todaySales, setTodaySales] = useState([]);
+  const [todayItems, setTodayItems] = useState([]);
+  const [todayHandover, setTodayHandover] = useState(0);
 
   useEffect(() => {
-    supabase.from("sales").select("*").eq("date", selDate).then(({ data }) => setSales(data || []));
-    supabase.from("sales").select("*, sale_items(*)").eq("date", selDate)
-      .then(({ data }) => setItems((data||[]).flatMap(s => s.sale_items || [])));
-    supabase.from("cash_handovers").select("amount").eq("date", selDate)
-      .then(({ data }) => setHandover((data||[]).reduce((s,h)=>s+Number(h.amount),0)));
-  }, [selDate]);
+    supabase.from("sales").select("*").eq("date", today()).then(({ data }) => setTodaySales(data || []));
+    supabase.from("sale_items").select("*, sales!inner(date)").eq("sales.date", today())
+      .then(({ data }) => setTodayItems(data || []));
+    supabase.from("cash_handovers").select("amount").eq("date", today())
+      .then(({ data }) => {
+        const total = (data||[]).reduce((s,h)=>s+Number(h.amount),0);
+        setTodayHandover(total);
+      });
+  }, []);
 
-  const revenue = sales.reduce((s,x) => s+Number(x.total), 0);
-  const cost    = items.reduce((s,x) => s+Number(x.qty||0)*Number(x.buy_price||0), 0);
+  const revenue = todaySales.reduce((s, x) => s + Number(x.total), 0);
+  const cost    = todayItems.reduce((s, x) => s + Number(x.qty||0) * Number(x.buy_price||0), 0);
   const profit  = revenue - cost;
   const byPay   = { cash:0, card:0, qr:0, debt:0 };
-  sales.forEach(s => { byPay[s.payment_type] = (byPay[s.payment_type]||0)+Number(s.total); });
+  todaySales.forEach(s => { byPay[s.payment_type] = (byPay[s.payment_type]||0) + Number(s.total); });
   const lowStock = products.filter(p => p.stock <= p.min_stock);
+
   const pMap = {};
-  items.forEach(i => { pMap[i.product_name] = (pMap[i.product_name]||0)+Number(i.qty||0); });
+  todayItems.forEach(i => { pMap[i.product_name] = (pMap[i.product_name]||0) + i.qty; });
   const top3 = Object.entries(pMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
-  const isToday = selDate === today();
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
-      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-        <input type="date" value={selDate} onChange={e=>setSelDate(e.target.value)}
-          style={{ flex:1, padding:"10px 12px", background:"#1e293b", border:"1px solid #334155",
-            borderRadius:10, color:"#f59e0b", fontSize:14, fontWeight:700 }} />
-        {!isToday && (
-          <button onClick={()=>setSelDate(today())}
-            style={{ padding:"10px 14px", background:"#f59e0b", border:"none", borderRadius:10,
-              color:"#0f172a", fontWeight:700, cursor:"pointer", fontSize:12 }}>
-            Бүгин
-          </button>
-        )}
-      </div>
-
+      <div style={{ fontSize:13, color:"#94a3b8", fontWeight:600 }}>📅 {today()}</div>
       <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
-        <Card icon="💰" label="Сатыў" value={fmt(revenue)} color="#10b981" />
-        <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b" />
-        <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6" />
-        <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6" />
+        <Card icon="💰" label="Бүгинги сатыў" value={fmt(revenue)} color="#10b981" />
+        <Card icon="📈" label="Бүгинги пайда" value={fmt(profit)} color="#f59e0b" />
+        <Card icon="🛒" label="Сатыўлар саны" value={todaySales.length+" рет"} color="#3b82f6" />
+        <Card icon="💸" label="Тапсырылған" value={fmt(todayHandover)} color="#8b5cf6" />
       </div>
 
       <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-        <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Төлем түрлери</div>
+        <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>💳 Бүгинги төлем түрлери</div>
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
           {Object.entries(byPay).map(([k,v]) => (
             <div key={k} style={{ background:"#0f172a", borderRadius:8, padding:"8px 10px" }}>
@@ -348,7 +340,7 @@ function Dashboard({ profile, products, selDate, setSelDate }) {
 
       {lowStock.length > 0 && (
         <div style={{ background:"#7f1d1d", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#fca5a5", marginBottom:8, fontSize:13 }}>⚠️ Тауысылып атырған ({lowStock.length})</div>
+          <div style={{ fontWeight:700, color:"#fca5a5", marginBottom:8, fontSize:13 }}>⚠️ Тауысылып атырған товарлар ({lowStock.length})</div>
           {lowStock.slice(0,5).map(p => (
             <div key={p.id} style={{ display:"flex", justifyContent:"space-between", fontSize:12, color:"#fecaca", padding:"3px 0" }}>
               <span>{p.name}</span><span style={{ fontWeight:700 }}>{p.stock} {p.unit}</span>
@@ -359,7 +351,7 @@ function Dashboard({ profile, products, selDate, setSelDate }) {
 
       {top3.length > 0 && (
         <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
-          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>🏆 Топ товарлар</div>
+          <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:8, fontSize:13 }}>🏆 Бүгинги топ товарлар</div>
           {top3.map(([name, qty], i) => (
             <div key={name} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:13 }}>
               <span>{["🥇","🥈","🥉"][i]} {name}</span>
@@ -373,29 +365,26 @@ function Dashboard({ profile, products, selDate, setSelDate }) {
 }
 
 // ─── SELL ────────────────────────────────────────────────────────
-function Sell({ profile, products, clients, refreshProducts, refreshClients, selDate }) {
-  const [cart, setCart]           = useState([]);
+function Sell({ profile, products, clients, refreshProducts, refreshClients }) {
+  const [cart, setCart]         = useState([]);
+  const [date, setDate]         = useState(today());
   const [productId, setProductId] = useState("");
-  const [qty, setQty]             = useState("");
-  const [payType, setPayType]     = useState("cash");
-  const [clientId, setClientId]   = useState("");
-  const [comment, setComment]     = useState("");
-  const [msg, setMsg]             = useState("");
-  const [saving, setSaving]       = useState(false);
-  const [handoverAmt, setHandoverAmt]       = useState("");
+  const [qty, setQty]           = useState("");
+  const [payType, setPayType]   = useState("cash");
+  const [clientId, setClientId] = useState("");
+  const [comment, setComment]   = useState("");
+  const [msg, setMsg]           = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [handoverAmt, setHandoverAmt] = useState("");
   const [handoverComment, setHandoverComment] = useState("");
-  const [handoverMsg, setHandoverMsg]       = useState("");
-  const [recentSales, setRecentSales]       = useState([]);
-
-  const saleDate = selDate || today();
+  const [handoverMsg, setHandoverMsg] = useState("");
+  const [recentSales, setRecentSales] = useState([]);
 
   const loadRecent = () =>
-    supabase.from("sales").select("*, sale_items(*)")
-      .eq("date", saleDate)
-      .order("created_at", { ascending:false }).limit(20)
+    supabase.from("sales").select("*, sale_items(*)").order("created_at", { ascending:false }).limit(10)
       .then(({ data }) => setRecentSales(data || []));
 
-  useEffect(() => { loadRecent(); }, [saleDate]);
+  useEffect(() => { loadRecent(); }, []);
 
   const addToCart = () => {
     const p = products.find(x => x.id === +productId);
@@ -417,7 +406,7 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients, sel
     setSaving(true);
     const { data: sale, error } = await supabase.from("sales").insert({
       seller_id: profile.id, client_id: clientId||null,
-      payment_type: payType, total, comment, date: saleDate
+      payment_type: payType, total, comment, date
     }).select().single();
     if (error) { setMsg("❌ Қате болды!"); setSaving(false); return; }
     await supabase.from("sale_items").insert(cart.map(i => ({ ...i, sale_id: sale.id })));
@@ -432,12 +421,12 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients, sel
       if (cl) await supabase.from("clients").update({ debt: cl.debt + total }).eq("id", cl.id);
       await supabase.from("client_history").insert({
         client_id: +clientId, type: "debt",
-        amount: total, comment: comment||null, date: saleDate
+        amount: total, comment: comment||null, date
       });
       refreshClients();
     }
     await printReceipt(sale, cart);
-    await sendTelegram(`🛒 <b>Жаңа сатыў</b>\n👤 ${profile.full_name}\n💰 ${fmt(total)}\n${PAYMENT[payType]}\n📅 ${saleDate}`);
+    await sendTelegram(`🛒 <b>Жаңа сатыў</b>\n👤 ${profile.full_name}\n💰 ${fmt(total)}\n${PAYMENT[payType]}\n📅 ${date}`);
     refreshProducts();
     setCart([]); setComment(""); setClientId("");
     setMsg("✅ Сатыў сақланды!");
@@ -622,8 +611,7 @@ function Purchase({ profile, products, categories, refreshProducts }) {
 
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
         <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:10 }}>🛒 Қолдан кириш</div>
-        <input type="date" value={date} onChange={e=>setDate(e.target.value)}
-          style={{ ...inputStyle, colorScheme:"dark", cursor:"pointer" }} />
+        <input type="date" value={date} onChange={e=>setDate(e.target.value)} style={inputStyle} />
         <SearchPicker products={products} value={productId} onChange={(id)=>{
           setProductId(id);
           const p = products.find(x=>x.id===+id);
@@ -943,63 +931,54 @@ function Requests({ profile, products }) {
 
 // ─── STATS ────────────────────────────────────────────────────────
 function Stats() {
-  const [period, setPeriod]       = useState("7");
-  const [barData, setBarData]     = useState([]);
+  const [days7, setDays7]         = useState([]);
   const [pieQty, setPieQty]       = useState([]);
   const [pieSum, setPieSum]       = useState([]);
   const [pieProfit, setPieProfit] = useState([]);
-
-  const PERIODS = [["1","1 күн"],["7","7 күн"],["30","1 ай"],["365","1 жыл"]];
+  const [monthly, setMonthly]     = useState([]);
 
   useEffect(() => {
-    const days = +period;
-    const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days + 1);
-    const fromStr = fromDate.toISOString().slice(0,10);
-
-    // Бар диаграмма
-    supabase.from("sales").select("date,total").gte("date", fromStr)
+    const d7 = Array.from({length:7},(_,i)=>{
+      const d=new Date(); d.setDate(d.getDate()-6+i); return d.toISOString().slice(0,10);
+    });
+    // 7 күнлик
+    supabase.from("sales").select("date,total").gte("date",d7[0])
       .then(({ data }) => {
-        if (days <= 31) {
-          const dates = Array.from({length:days}, (_,i) => {
-            const d = new Date(); d.setDate(d.getDate()-days+1+i);
-            return d.toISOString().slice(0,10);
-          });
-          const map = {};
-          (data||[]).forEach(s => { map[s.date]=(map[s.date]||0)+Number(s.total); });
-          setBarData(dates.map(d => ({ date:d.slice(5), rev:map[d]||0 })));
-        } else {
-          const map = {};
-          (data||[]).forEach(s => { const m=s.date.slice(0,7); map[m]=(map[m]||0)+Number(s.total); });
-          setBarData(Object.entries(map).sort().map(([m,rev]) => ({ date:m.slice(5), rev })));
-        }
+        const map={};
+        (data||[]).forEach(s=>{ map[s.date]=(map[s.date]||0)+Number(s.total); });
+        setDays7(d7.map(d=>({ date:d.slice(5), rev:map[d]||0 })));
       });
-
     // Пирог диаграммалар
-    supabase.from("sale_items").select("product_name, qty, sell_price, buy_price, sales!inner(date)")
-      .gte("sales.date", fromStr)
+    supabase.from("sale_items").select("product_name, qty, sell_price, buy_price")
       .then(({ data }) => {
         const qtyMap={}, sumMap={}, profitMap={};
-        (data||[]).forEach(i => {
+        let totalProfit = 0;
+        (data||[]).forEach(i=>{
           const name = i.product_name || "Белгисиз";
-          const qty  = Number(i.qty||0);
+          const qty = Number(i.qty||0);
           const sell = Number(i.sell_price||0);
-          const buy  = Number(i.buy_price||0);
+          const buy = Number(i.buy_price||0);
+          const profit = (sell - buy) * qty;
           qtyMap[name]    = (qtyMap[name]||0) + qty;
-          sumMap[name]    = (sumMap[name]||0) + sell*qty;
-          profitMap[name] = (profitMap[name]||0) + (sell-buy)*qty;
+          sumMap[name]    = (sumMap[name]||0) + sell * qty;
+          profitMap[name] = (profitMap[name]||0) + profit;
+          totalProfit += profit;
         });
-        const mkPie = map => Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,value])=>({name,value:Math.round(value)}));
+        const mkPie = (map) => Object.entries(map).sort((a,b)=>b[1]-a[1]).slice(0,6).map(([name,value])=>({name,value:Math.round(value)}));
         setPieQty(mkPie(qtyMap));
         setPieSum(mkPie(sumMap));
         setPieProfit(mkPie(profitMap));
       });
-  }, [period]);
+    // Айлық
+    supabase.from("sales").select("date,total")
+      .then(({ data }) => {
+        const map={};
+        (data||[]).forEach(s=>{ const m=s.date.slice(0,7); map[m]=(map[m]||0)+Number(s.total); });
+        setMonthly(Object.entries(map).slice(-6).map(([m,rev])=>({month:m.slice(5),rev})));
+      });
+  }, []);
 
-  const tooltipStyle = {
-    contentStyle:{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"},
-    itemStyle:{color:"#e2e8f0"}, labelStyle:{color:"#f59e0b"}
-  };
+  const tooltipStyle = { contentStyle:{background:"#1e293b",border:"1px solid #f59e0b",borderRadius:8,color:"#e2e8f0"}, itemStyle:{color:"#e2e8f0"}, labelStyle:{color:"#f59e0b"} };
 
   const PieBlock = ({ data, title, formatter }) => (
     data.length > 0 ? (
@@ -1008,10 +987,11 @@ function Stats() {
         <ResponsiveContainer width="100%" height={220}>
           <PieChart>
             <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}
-              label={({percent}) => `${(percent*100).toFixed(0)}%`} labelLine={true}>
+              label={({name, percent}) => `${(percent*100).toFixed(0)}%`}
+              labelLine={true}>
               {data.map((_,i)=><Cell key={i} fill={COLORS[i%COLORS.length]} />)}
             </Pie>
-            <Tooltip formatter={formatter||(v=>v)} {...tooltipStyle} />
+            <Tooltip formatter={formatter||((v)=>v)} {...tooltipStyle} />
           </PieChart>
         </ResponsiveContainer>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:4 }}>
@@ -1027,23 +1007,12 @@ function Stats() {
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
-      <div style={{ display:"flex", gap:6 }}>
-        {PERIODS.map(([k,l]) => (
-          <button key={k} onClick={()=>setPeriod(k)}
-            style={{ flex:1, padding:"9px 4px", background:period===k?"#f59e0b":"#1e293b",
-              border:"none", borderRadius:8, color:period===k?"#0f172a":"#94a3b8",
-              fontWeight:period===k?700:400, cursor:"pointer", fontSize:12 }}>
-            {l}
-          </button>
-        ))}
-      </div>
-
       <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
-        <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:12, fontSize:13 }}>📅 Сатыў динамикасы</div>
+        <div style={{ fontWeight:700, color:"#f59e0b", marginBottom:12, fontSize:13 }}>📅 Соңғы 7 күн</div>
         <ResponsiveContainer width="100%" height={180}>
-          <BarChart data={barData}>
+          <BarChart data={days7}>
             <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-            <XAxis dataKey="date" tick={{fill:"#94a3b8",fontSize:10}} />
+            <XAxis dataKey="date" tick={{fill:"#94a3b8",fontSize:11}} />
             <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
             <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
             <Bar dataKey="rev" fill="#f59e0b" radius={[4,4,0,0]} name="Сатыў" />
@@ -1054,6 +1023,21 @@ function Stats() {
       <PieBlock data={pieQty} title="🏆 Товар үлеси (саны бойынша)" formatter={v=>v+" дана"} />
       <PieBlock data={pieSum} title="💰 Товар үлеси (сумма бойынша)" formatter={fmt} />
       <PieBlock data={pieProfit} title="📈 Товар үлеси (пайда бойынша)" formatter={fmt} />
+
+      {monthly.length > 0 && (
+        <div style={{ background:"#1e293b", borderRadius:12, padding:14 }}>
+          <div style={{ fontWeight:700, color:"#3b82f6", marginBottom:12, fontSize:13 }}>📆 Айлық сатыў</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <LineChart data={monthly}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="month" tick={{fill:"#94a3b8",fontSize:11}} />
+              <YAxis tick={{fill:"#94a3b8",fontSize:10}} tickFormatter={v=>(v/1000)+"к"} />
+              <Tooltip formatter={v=>fmt(v)} {...tooltipStyle} />
+              <Line type="monotone" dataKey="rev" stroke="#3b82f6" strokeWidth={2} dot={{fill:"#3b82f6"}} name="Сатыў" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
@@ -1274,29 +1258,15 @@ function SearchPicker({ products, value, onChange }) {
     <div ref={ref} style={{ position:"relative", marginBottom:8 }}>
       <div style={{ display:"flex", gap:8 }}>
         <div style={{ flex:1, position:"relative" }}>
-          {/* Таңланған товар аты */}
-          {selected && !search && (
-            <div style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)",
-              color:"#f59e0b", fontWeight:600, fontSize:14, pointerEvents:"none", whiteSpace:"nowrap",
-              overflow:"hidden", maxWidth:"calc(100% - 40px)" }}>
-              {selected.name}
-            </div>
-          )}
-          <input
-            placeholder={selected ? "" : "🔍 Товар аты ямаса штрих-код..."}
-            value={search}
-            onChange={e=>{setSearch(e.target.value);setOpen(true);}}
-            onFocus={()=>setOpen(true)}
+          <input placeholder={selected ? selected.name : "🔍 Товар аты ямаса штрих-код..."}
+            value={search} onChange={e=>{setSearch(e.target.value);setOpen(true);}} onFocus={()=>setOpen(true)}
             style={{ width:"100%", ...inputStyle, marginBottom:0,
               border:`1px solid ${open?"#f59e0b":"#334155"}`,
               boxSizing:"border-box",
-              color:"#f1f5f9",
-              background: selected && !search ? "#1e3a2f" : "#0f172a"
+              color: search ? "#e2e8f0" : "#94a3b8"
             }} />
           {selected && !search && (
-            <button onClick={()=>{onChange("");setSearch("");}}
-              style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",
-                background:"none",border:"none",color:"#ef4444",cursor:"pointer",fontSize:18 }}>✕</button>
+            <button onClick={()=>{onChange("");setSearch("");}} style={{ position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",color:"#64748b",cursor:"pointer",fontSize:16 }}>✕</button>
           )}
         </div>
         <ScanBtn onScan={handleScan} label="📷" />
