@@ -447,12 +447,26 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients, sel
   };
 
   const submitHandover = async () => {
-    if (!handoverAmt) return;
-    await supabase.from("cash_handovers").insert({ seller_id:profile.id, amount:+handoverAmt, comment:handoverComment, date:today() });
-    await sendTelegram(`💵 <b>Касса тапсырылды</b>\n👤 ${profile.full_name}\n💰 ${fmt(handoverAmt)}\n💬 ${handoverComment||"—"}`);
-    setHandoverAmt(""); setHandoverComment("");
-    setHandoverMsg("✅ Тапсырылды!"); setTimeout(()=>setHandoverMsg(""),3000);
-  };
+  if (!handoverAmt) return;
+  // Кассадағы жәми есаплаў
+  const { data: allSalesData } = await supabase.from("sales").select("total").eq("payment_type","cash");
+  const { data: allHandData }  = await supabase.from("cash_handovers").select("amount");
+  const { data: allDebtData }  = await supabase.from("client_history").select("amount").eq("type","payment");
+  const totalCash    = (allSalesData||[]).reduce((s,x)=>s+Number(x.total),0);
+  const totalHand    = (allHandData||[]).reduce((s,x)=>s+Number(x.amount),0);
+  const totalDebt    = (allDebtData||[]).reduce((s,x)=>s+Number(x.amount),0);
+  const remaining    = totalCash + totalDebt - totalHand - +handoverAmt;
+
+  await supabase.from("cash_handovers").insert({ seller_id:profile.id, amount:+handoverAmt, comment:handoverComment, date:today() });
+  await sendTelegram(`💵 <b>Касса тапсырылды</b>\n👤 ${profile.full_name}\n💰 Тапсырылды: ${fmt(handoverAmt)}\n🏦 Кассада қалды: ${fmt(remaining)}\n💬 ${handoverComment||"—"}`);
+  setHandoverAmt(""); setHandoverComment("");
+  setHandoverMsg("✅ Тапсырылды!"); setTimeout(()=>setHandoverMsg(""),3000);
+  if (+handoverAmt > totalCash + totalDebt - totalHand) {
+  setHandoverMsg("❌ Кассада жеткиликсиз! Қалдық: " + fmt(totalCash + totalDebt - totalHand));
+  setTimeout(()=>setHandoverMsg(""),4000);
+  return;
+}
+};
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -1068,6 +1082,10 @@ function Reports({ profile, products }) {
   const [showHandovers, setShowHandovers] = useState(false);
   const [closing, setClosing]     = useState(false);
   const [closeMsg, setCloseMsg]   = useState("");
+  const [allCash, setAllCash]           = useState(0);
+  const [allHandovers, setAllHandovers] = useState([]);
+  const [allDebtPaid, setAllDebtPaid]   = useState([]);
+  const [showCashDetail, setShowCashDetail] = useState(false);
 
   useEffect(() => {
     const filter = period === "today" ? today()
@@ -1080,13 +1098,21 @@ function Reports({ profile, products }) {
         const allItems = (data||[]).flatMap(s => s.sale_items || []);
         setItems(allItems);
       });
-    supabase.from("cash_handovers").select("*").gte("date", filter)
-      .then(({ data }) => setHandovers(data || []));
-    supabase.from("client_history").select("amount").eq("type","payment").gte("date", filter)
-      .then(({ data }) => {
-        const total = (data||[]).reduce((s,h)=>s+Number(h.amount),0);
-        setDebtPaid(total);
-      });
+    // useEffect ишине қосыңыз (filter-сиз, ҳәмме ўақыт):
+supabase.from("sales").select("total, payment_type")
+  .eq("payment_type", "cash")
+  .then(({ data }) => {
+    const allCash = (data||[]).reduce((s,x)=>s+Number(x.total),0);
+    setAllCash(allCash);
+  });
+supabase.from("cash_handovers").select("*")
+  .then(({ data }) => setAllHandovers(data || []));
+supabase.from("client_history").select("amount, date, comment").eq("type","payment")
+  .then(({ data }) => setAllDebtPaid(data || []));
+
+// Период бойынша (ҳәзиргидей):
+supabase.from("cash_handovers").select("*").gte("date", filter)
+  .then(({ data }) => setHandovers(data || []));
   }, [period]);
 
   const revenue         = sales.reduce((s,x)=>s+Number(x.total),0);
@@ -1096,6 +1122,9 @@ function Reports({ profile, products }) {
   sales.forEach(s=>{ byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total); });
   const totalHandover   = handovers.reduce((s,h)=>s+Number(h.amount),0);
   const cashInRegister  = byPay.cash + debtPaid - totalHandover;
+  const allHandoverTotal = allHandovers.reduce((s,h)=>s+Number(h.amount),0);
+  const allDebtPaidTotal = allDebtPaid.reduce((s,h)=>s+Number(h.amount),0);
+  const totalCashInRegister = allCash + allDebtPaidTotal - allHandoverTotal;
 
   const downloadStock = () => {
     const blob = exportStock(products);
@@ -1133,7 +1162,56 @@ function Reports({ profile, products }) {
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b" />
         <Card icon="📦" label="Шығын" value={fmt(cost)} color="#ef4444" />
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6" />
-        <Card icon="🏦" label="Кассадагы нақт" value={fmt(cashInRegister)} color="#10b981" />
+        <div onClick={()=>setShowCashDetail(v=>!v)}
+  style={{ background:"#1e293b", borderRadius:12, padding:12, borderLeft:"3px solid #10b981", cursor:"pointer" }}>
+  <div style={{ fontSize:22 }}>🏦</div>
+  <div style={{ fontSize:11, color:"#64748b", marginTop:4 }}>Кассадагы нақт (жәми)</div>
+  <div style={{ fontWeight:700, color:"#10b981", fontSize:14, marginTop:2 }}>{fmt(totalCashInRegister)}</div>
+</div>
+
+{showCashDetail && (
+  <div style={{ background:"#1e293b", borderRadius:12, padding:12 }}>
+    <div style={{ fontWeight:700, color:"#10b981", marginBottom:8, fontSize:13 }}>🏦 Касса тарийхы</div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #0f172a", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Жәми нақт сатыў:</span>
+      <span style={{ color:"#10b981" }}>{fmt(allCash)}</span>
+    </div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #0f172a", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Қарыз төлеўлер:</span>
+      <span style={{ color:"#10b981" }}>{fmt(allDebtPaidTotal)}</span>
+    </div>
+    <div style={{ padding:"6px 0", borderBottom:"1px solid #334155", display:"flex", justifyContent:"space-between", fontSize:12 }}>
+      <span style={{ color:"#64748b" }}>Тапсырылған:</span>
+      <span style={{ color:"#ef4444" }}>-{fmt(allHandoverTotal)}</span>
+    </div>
+    <div style={{ marginTop:8, fontWeight:700, display:"flex", justifyContent:"space-between" }}>
+      <span>Қалдық:</span>
+      <span style={{ color:"#10b981" }}>{fmt(totalCashInRegister)}</span>
+    </div>
+    <div style={{ marginTop:10 }}>
+      <div style={{ fontWeight:600, color:"#f59e0b", marginBottom:6, fontSize:12 }}>📋 Тапсырыў тарийхы:</div>
+      {allHandovers.sort((a,b)=>b.date.localeCompare(a.date)).map(h=>(
+        <div key={h.id} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
+          <div style={{ display:"flex", justifyContent:"space-between" }}>
+            <span style={{ color:"#94a3b8" }}>{h.date}</span>
+            <span style={{ color:"#ef4444" }}>{fmt(h.amount)}</span>
+          </div>
+          {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+        </div>
+      ))}
+      <div style={{ fontWeight:600, color:"#10b981", marginTop:8, marginBottom:6, fontSize:12 }}>💵 Қарыз төлеў тарийхы:</div>
+      {allDebtPaid.sort((a,b)=>b.date?.localeCompare(a.date)).map((h,i)=>(
+        <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
+          <div style={{ display:"flex", justifyContent:"space-between" }}>
+            <span style={{ color:"#94a3b8" }}>{h.date}</span>
+            <span style={{ color:"#10b981" }}>{fmt(h.amount)}</span>
+          </div>
+          {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+        </div>
+      ))}
+    </div>
+  </div>
+)}
         <Card icon="📊" label="Маржа %" value={revenue ? ((profit/revenue)*100).toFixed(1)+"%" : "0%"} color="#14b8a6" />
       </div>
 
@@ -1192,6 +1270,7 @@ function Settings({ profile }) {
   const [name,  setName]    = useState("");
   const [role,  setRole]    = useState("seller");
   const [msg,   setMsg]     = useState("");
+
 
   useEffect(() => {
     supabase.from("profiles").select("*").order("full_name").then(({ data }) => setUsers(data || []));
