@@ -27,7 +27,19 @@ const supabase = createClient(
 const SHOP_NAME = import.meta.env.VITE_SHOP_NAME || "Магазин";
 const TG_TOKEN = import.meta.env.VITE_TELEGRAM_BOT_TOKEN;
 const TG_CHAT  = import.meta.env.VITE_TELEGRAM_CHAT_ID;
-
+async function getCashBalance() {
+  const [s1, s2, s3] = await Promise.all([
+    supabase.from("sales").select("total").eq("payment_type","cash"),
+    supabase.from("cash_handovers").select("amount, id, handover_cancels(id)"),
+    supabase.from("client_history").select("amount").eq("type","payment"),
+  ]);
+  const totalCash    = (s1.data||[]).reduce((s,x)=>s+Number(x.total),0);
+  // Отмена қылынмаған тапсырыўлар ғана
+  const activeHandovers = (s2.data||[]).filter(h => !h.handover_cancels?.length);
+  const totalHand    = activeHandovers.reduce((s,x)=>s+Number(x.amount),0);
+  const totalDebt    = (s3.data||[]).reduce((s,x)=>s+Number(x.amount),0);
+  return { balance: totalCash + totalDebt - totalHand, totalCash, totalHand, totalDebt };
+}
 // ─── HELPERS ────────────────────────────────────────────────────
 const fmt  = (n) => Number(n || 0).toLocaleString("uz-UZ") + " сўм";
 const today = () => new Date().toISOString().slice(0, 10);
@@ -236,7 +248,35 @@ function MainApp({ profile }) {
 
   const allowed = NAV_ROLES[profile.role] || NAV_ROLES.seller;
   const nav = NAV_ALL.filter(n => allowed.includes(n.id));
-
+function InstallPWABtn() {
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [show, setShow] = useState(false);
+ 
+  useEffect(() => {
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShow(true);
+    });
+    window.addEventListener('appinstalled', () => setShow(false));
+  }, []);
+ 
+  const install = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') setShow(false);
+    setDeferredPrompt(null);
+  };
+ 
+  if (!show) return null;
+  return (
+    <button onClick={install}
+      style={{ padding:"6px 12px", background:"#f59e0b", border:"none", borderRadius:8, color:"#0f172a", fontWeight:700, cursor:"pointer", fontSize:12 }}>
+      📲 Орнатыў
+    </button>
+  );
+}
   useEffect(() => {
     supabase.from("products").select("*").order("name").then(({ data }) => setProducts(data || []));
     supabase.from("clients").select("*").order("name").then(({ data }) => setClients(data || []));
@@ -265,6 +305,8 @@ function MainApp({ profile }) {
           </div>
         </div>
         <button onClick={logout} style={{ background:"none", border:"1px solid #334155", borderRadius:8, color:"#64748b", padding:"6px 12px", cursor:"pointer", fontSize:12 }}>Шығыў</button>
+        
+      
       </div>
 
       <div style={{ padding:"14px 12px" }}>
@@ -447,12 +489,38 @@ function Sell({ profile, products, clients, refreshProducts, refreshClients, sel
   };
 
   const submitHandover = async () => {
-    if (!handoverAmt) return;
-    await supabase.from("cash_handovers").insert({ seller_id:profile.id, amount:+handoverAmt, comment:handoverComment, date:today() });
-    await sendTelegram(`💵 <b>Касса тапсырылды</b>\n👤 ${profile.full_name}\n💰 ${fmt(handoverAmt)}\n💬 ${handoverComment||"—"}`);
-    setHandoverAmt(""); setHandoverComment("");
-    setHandoverMsg("✅ Тапсырылды!"); setTimeout(()=>setHandoverMsg(""),3000);
-  };
+  if (!handoverAmt || +handoverAmt <= 0) return;
+  
+  const { balance } = await getCashBalance();
+  
+  if (+handoverAmt > balance) {
+    setHandoverMsg(`❌ Кассада тек ${fmt(balance)} бар! Артық тапсырыўға болмайды.`);
+    setTimeout(()=>setHandoverMsg(""),5000);
+    return;
+  }
+  
+  const remaining = balance - +handoverAmt;
+  
+  await supabase.from("cash_handovers").insert({
+    seller_id: profile.id,
+    amount: +handoverAmt,
+    comment: handoverComment,
+    date: today()
+  });
+  
+  await sendTelegram(
+    `💵 <b>Касса тапсырылды</b>\n` +
+    `👤 ${profile.full_name}\n` +
+    `💰 Тапсырылды: ${fmt(handoverAmt)}\n` +
+    `🏦 Кассада қалды: ${fmt(remaining)}\n` +
+    `💬 ${handoverComment||"—"}`
+  );
+  
+  setHandoverAmt("");
+  setHandoverComment("");
+  setHandoverMsg(`✅ Тапсырылды! Кассада қалды: ${fmt(remaining)}`);
+  setTimeout(()=>setHandoverMsg(""),5000);
+};
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
@@ -1072,7 +1140,139 @@ function Reports({ profile, products }) {
   const [allHandovers, setAllHandovers]     = useState([]);
   const [allDebtPaid, setAllDebtPaid]       = useState([]);
   const [showCashDetail, setShowCashDetail] = useState(false);
-
+function RefundModal({ sale, onClose, onRefunded, profile, refreshProducts }) {
+  const [items, setItems]     = useState([]);
+  const [selItems, setSelItems] = useState({});
+  const [reason, setReason]   = useState("");
+  const [msg, setMsg]         = useState("");
+  const [saving, setSaving]   = useState(false);
+ 
+  useEffect(() => {
+    supabase.from("sale_items").select("*").eq("sale_id", sale.id)
+      .then(({ data }) => {
+        setItems(data || []);
+        const init = {};
+        (data||[]).forEach(i => { init[i.id] = { checked: false, qty: i.qty }; });
+        setSelItems(init);
+      });
+  }, [sale.id]);
+ 
+  const toggle = (id) => setSelItems(s => ({ ...s, [id]: { ...s[id], checked: !s[id].checked } }));
+  const setQty = (id, qty) => setSelItems(s => ({ ...s, [id]: { ...s[id], qty: Math.min(+qty, items.find(i=>i.id===id)?.qty||1) } }));
+ 
+  const selectedItems = items.filter(i => selItems[i.id]?.checked);
+  const total = selectedItems.reduce((s,i) => s + i.sell_price * (selItems[i.id]?.qty||i.qty), 0);
+ 
+  const submit = async () => {
+    if (!selectedItems.length) { setMsg("❌ Товар таңлаңыз!"); return; }
+    setSaving(true);
+ 
+    // Касса балансын тексериў
+    const { balance } = await getCashBalance();
+    if (total > balance) {
+      setMsg(`❌ Кассада жеткиликсиз! Қалдық: ${fmt(balance)}`);
+      setSaving(false);
+      return;
+    }
+ 
+    // Қайтарыў жазыў
+    const { data: refund } = await supabase.from("refunds").insert({
+      sale_id: sale.id,
+      seller_id: profile.id,
+      reason: reason||null,
+      total,
+      date: today()
+    }).select().single();
+ 
+    await supabase.from("refund_items").insert(
+      selectedItems.map(i => ({
+        refund_id: refund.id,
+        product_id: i.product_id,
+        product_name: i.product_name,
+        qty: selItems[i.id]?.qty || i.qty,
+        sell_price: i.sell_price,
+        buy_price: i.buy_price,
+      }))
+    );
+ 
+    // Товар қалдығын қайтарыў
+    for (const i of selectedItems) {
+      const qty = selItems[i.id]?.qty || i.qty;
+      const { data: prod } = await supabase.from("products").select("stock").eq("id", i.product_id).single();
+      if (prod) await supabase.from("products").update({ stock: prod.stock + qty }).eq("id", i.product_id);
+    }
+ 
+    // Кассадан кемейтиў — теріс тапсырыў ретинде
+    await supabase.from("cash_handovers").insert({
+      seller_id: profile.id,
+      amount: total,
+      comment: `Қайтарыў: чек №${sale.id}${reason ? " — " + reason : ""}`,
+      date: today()
+    });
+ 
+    await sendTelegram(
+      `↩️ <b>Товар қайтарылды</b>\n` +
+      `👤 ${profile.full_name}\n` +
+      `🧾 Чек №${sale.id}\n` +
+      `💰 Сумма: ${fmt(total)}\n` +
+      `💬 ${reason||"—"}`
+    );
+ 
+    refreshProducts();
+    setMsg("✅ Қайтарыў сақланды!");
+    setTimeout(() => { onRefunded(); onClose(); }, 2000);
+    setSaving(false);
+  };
+ 
+  return (
+    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.8)", zIndex:500, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}>
+      <div style={{ background:"#1e293b", borderRadius:16, padding:20, width:"100%", maxWidth:480, maxHeight:"90vh", overflowY:"auto" }}>
+        <div style={{ fontWeight:700, color:"#ef4444", marginBottom:12, fontSize:16 }}>↩️ Товар қайтарыў — Чек №{sale.id}</div>
+        {msg && <div style={{ background: msg.startsWith("✅")?"#064e3b":"#7f1d1d", color: msg.startsWith("✅")?"#6ee7b7":"#fca5a5", borderRadius:8, padding:10, marginBottom:10, fontSize:13 }}>{msg}</div>}
+        
+        {items.map(i => (
+          <div key={i.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", borderBottom:"1px solid #0f172a" }}>
+            <input type="checkbox" checked={selItems[i.id]?.checked||false} onChange={()=>toggle(i.id)}
+              style={{ width:18, height:18, cursor:"pointer" }} />
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, color:"#e2e8f0" }}>{i.product_name}</div>
+              <div style={{ fontSize:11, color:"#64748b" }}>{fmt(i.sell_price)} × {i.qty}</div>
+            </div>
+            {selItems[i.id]?.checked && (
+              <input type="number" min="1" max={i.qty} value={selItems[i.id]?.qty||i.qty}
+                onChange={e=>setQty(i.id, e.target.value)}
+                style={{ width:60, padding:"4px 8px", background:"#0f172a", border:"1px solid #334155", borderRadius:6, color:"#e2e8f0", fontSize:13 }} />
+            )}
+          </div>
+        ))}
+ 
+        <div style={{ margin:"12px 0" }}>
+          <input placeholder="Себеби (ихтиярий)" value={reason} onChange={e=>setReason(e.target.value)}
+            style={{ width:"100%", padding:"10px 12px", background:"#0f172a", border:"1px solid #334155", borderRadius:8, color:"#e2e8f0", fontSize:13, boxSizing:"border-box" }} />
+        </div>
+ 
+        {selectedItems.length > 0 && (
+          <div style={{ display:"flex", justifyContent:"space-between", fontWeight:700, marginBottom:12 }}>
+            <span>Қайтарыў суммасы:</span>
+            <span style={{ color:"#ef4444" }}>{fmt(total)}</span>
+          </div>
+        )}
+ 
+        <div style={{ display:"flex", gap:8 }}>
+          <button onClick={submit} disabled={saving}
+            style={{ flex:1, padding:12, background:"#ef4444", border:"none", borderRadius:8, color:"#fff", fontWeight:700, cursor:"pointer", fontSize:14 }}>
+            {saving ? "Сақланып атыр…" : "✅ Қайтарыўды растаў"}
+          </button>
+          <button onClick={onClose}
+            style={{ padding:12, background:"#1e293b", border:"1px solid #334155", borderRadius:8, color:"#94a3b8", fontWeight:700, cursor:"pointer" }}>
+            Жабыў
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+ 
   useEffect(() => {
     const filter = period === "today" ? today()
       : period === "week" ? new Date(Date.now()-7*86400000).toISOString().slice(0,10)
@@ -1179,8 +1379,69 @@ supabase.from("client_history").select("amount, date, comment, clients(name)").e
           <span style={{ color:"#ef4444" }}>{fmt(h.amount)}</span>
         </div>
         {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
+        function HandoverCancelBtn({ handover, profile, onCancelled }) {
+  const [show, setShow]     = useState(false);
+  const [reason, setReason] = useState("");
+  const [msg, setMsg]       = useState("");
+ 
+  const cancel = async () => {
+    if (!reason) { setMsg("❌ Себебин жазыңыз!"); return; }
+    
+    // Алдын отмена қылынғанын тексериў
+    const { data: existing } = await supabase.from("handover_cancels")
+      .select("id").eq("handover_id", handover.id);
+    if (existing?.length > 0) {
+      setMsg("❌ Бул операция алдын отмена қылынған!");
+      return;
+    }
+ 
+    await supabase.from("handover_cancels").insert({
+      handover_id: handover.id,
+      cancelled_by: profile.id,
+      reason,
+      amount: handover.amount
+    });
+ 
+    await sendTelegram(
+      `🔄 <b>Инкассация отмена қылынды</b>\n` +
+      `👤 ${profile.full_name}\n` +
+      `💰 Сумма: ${fmt(handover.amount)}\n` +
+      `📅 Баслапқы күни: ${handover.date}\n` +
+      `💬 Себеби: ${reason}`
+    );
+ 
+    setMsg("✅ Отмена қылынды!");
+    setTimeout(() => { setShow(false); onCancelled(); }, 2000);
+  };
+ 
+  if (handover.handover_cancels?.length > 0) {
+    return <span style={{ fontSize:10, color:"#64748b", background:"#1e293b", padding:"2px 8px", borderRadius:6 }}>Отмена қылынған</span>;
+  }
+ 
+  return (
+    <div>
+      {!show ? (
+        <button onClick={()=>setShow(true)}
+          style={{ fontSize:11, padding:"3px 10px", background:"#7f1d1d", border:"none", borderRadius:6, color:"#fca5a5", cursor:"pointer" }}>
+          Отмена
+        </button>
+      ) : (
+        <div style={{ marginTop:6, display:"flex", flexDirection:"column", gap:6 }}>
+          {msg && <div style={{ fontSize:11, color: msg.startsWith("✅")?"#6ee7b7":"#fca5a5" }}>{msg}</div>}
+          <input placeholder="Отмена себеби *" value={reason} onChange={e=>setReason(e.target.value)}
+            style={{ padding:"6px 10px", background:"#0f172a", border:"1px solid #334155", borderRadius:6, color:"#e2e8f0", fontSize:12 }} />
+          <div style={{ display:"flex", gap:6 }}>
+            <button onClick={cancel} style={{ flex:1, padding:"6px", background:"#ef4444", border:"none", borderRadius:6, color:"#fff", fontWeight:700, cursor:"pointer", fontSize:12 }}>Растаў</button>
+            <button onClick={()=>setShow(false)} style={{ padding:"6px 10px", background:"#334155", border:"none", borderRadius:6, color:"#94a3b8", cursor:"pointer", fontSize:12 }}>Жоқ</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
       </div>
     ))}
+
     <div style={{ fontWeight:600, color:"#10b981", margin:"10px 0 6px", fontSize:12 }}>💵 Қарыз төлеў тарийхы:</div>
     {allDebtPaid.sort((a,b)=>b.date?.localeCompare(a.date)).map((h,i)=>(
       <div key={i} style={{ padding:"5px 0", borderBottom:"1px solid #0f172a", fontSize:12 }}>
