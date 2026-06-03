@@ -1379,7 +1379,7 @@ supabase.from("client_history").select("amount, date, comment, clients(name)").e
           <span style={{ color:"#ef4444" }}>{fmt(h.amount)}</span>
         </div>
         {h.comment && <div style={{ color:"#64748b", fontSize:11 }}>💬 {h.comment}</div>}
-        ))}
+       
       </div>
     </div>
   )}
