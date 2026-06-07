@@ -528,10 +528,10 @@ function RefundModal({sale,onClose,onRefunded,profile,refreshProducts}) {
       sale_id:sale.id,seller_id:profile.id,reason:reason||null,total,date:today()
     }).select().single();
 
-    await supabase.from("refund_items").insert(
-      selectedItems.map(i=>({refund_id:refund.id,product_id:i.product_id,product_name:i.product_name,
-        qty:selItems[i.id]?.qty||i.qty,sell_price:i.sell_price,buy_price:i.buy_price}))
-    );
+   await supabase.from("refund_items").insert(
+  selectedItems.map(i=>({refund_id:refund.id,product_id:i.product_id||null,product_name:i.product_name,
+    qty:selItems[i.id]?.qty||i.qty,sell_price:i.sell_price||0,buy_price:i.buy_price||0}))
+);
 
     for(const i of selectedItems){
       const qty=selItems[i.id]?.qty||i.qty;
