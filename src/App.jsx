@@ -197,7 +197,7 @@ const NAV_ALL=[
   {id:"settings",icon:"⚙️",label:"Параметр"},
 ];
 const NAV_ROLES={
-  seller:["dashboard","sell","requests"],
+  seller:["dashboard","sell","purchase","clients","stats","requests"],
   supply:["dashboard","purchase","products","requests","reports"],
   director:["dashboard","sell","purchase","products","clients","requests","stats","reports","settings"],
 };
@@ -350,7 +350,7 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
   const [handoverMsg,setHandoverMsg]=useState("");
   const [recentSales,setRecentSales]=useState([]);
   const [refundSale,setRefundSale]=useState(null);
-
+ const [cashBalance, setCashBalance] = useState(0);
   const saleDate=selDate||today();
 
   const loadRecent=()=>
@@ -359,7 +359,7 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
       .then(({data})=>setRecentSales(data||[]));
 
   useEffect(()=>{loadRecent();},[saleDate]);
-
+ getCashBalance().then(({balance}) => setCashBalance(balance));
   const addToCart=()=>{
     const p=products.find(x=>x.id===+productId);
     if(!p||!qty) return;
@@ -471,7 +471,10 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
       )}
 
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
-        <div style={{fontWeight:700,color:"#3b82f6",marginBottom:8,fontSize:13}}>💵 Касса тапсырыў</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+  <div style={{fontWeight:700,color:"#3b82f6",fontSize:13}}>💵 Касса тапсырыў</div>
+  <div style={{fontSize:13,color:"#10b981",fontWeight:700}}>🏦 {fmt(cashBalance)}</div>
+</div>
         {handoverMsg&&<Alert msg={handoverMsg}/>}
         <Inp placeholder="Сумма (сўм)" value={handoverAmt} onChange={setHandoverAmt} type="number"/>
         <Inp placeholder="Комментарий" value={handoverComment} onChange={setHandoverComment}/>
