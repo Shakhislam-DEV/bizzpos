@@ -28,17 +28,21 @@ const PAYMENT = { cash:"💵 Нақ", card:"💳 Терминал", qr:"📱 QR"
 
 // ─── КАССА БАЛАНСЫ ───────────────────────────────────────────
 async function getCashBalance() {
-  const [s1,s2,s3] = await Promise.all([
+  const [s1,s2,s3,s4] = await Promise.all([
     supabase.from("sales").select("total").eq("payment_type","cash"),
-    supabase.from("cash_handovers").select("amount"),
+    supabase.from("cash_handovers").select("amount, handover_cancels(id)"),
     supabase.from("client_history").select("amount").eq("type","payment"),
+    supabase.from("refunds").select("total"),
   ]);
   const totalCash = (s1.data||[]).reduce((s,x)=>s+Number(x.total),0);
-  const totalHand = (s2.data||[]).reduce((s,x)=>s+Number(x.amount),0);
+  // Тек отмена қылынмаған тапсырыўлар
+  const activeHandovers = (s2.data||[]).filter(h=>!(h.handover_cancels?.length>0));
+  const totalHand = activeHandovers.reduce((s,x)=>s+Number(x.amount),0);
   const totalDebt = (s3.data||[]).reduce((s,x)=>s+Number(x.amount),0);
+  // Қайтарыўлар кассадан кемейтилген
+  const totalRefunds = (s4.data||[]).reduce((s,x)=>s+Number(x.total),0);
   return { balance: totalCash + totalDebt - totalHand, totalCash, totalHand, totalDebt };
 }
-
 // ─── PRINT ───────────────────────────────────────────────────
 async function printReceipt(sale, items) {
   const w = window.open("","_blank","width=400,height=600");
@@ -1083,7 +1087,7 @@ function Reports({profile,products}) {
       .then(({data})=>setDebtPaid((data||[]).reduce((s,h)=>s+Number(h.amount),0)));
     // Жәми касса
     supabase.from("sales").select("total").eq("payment_type","cash").then(({data})=>setAllCash((data||[]).reduce((s,x)=>s+Number(x.total),0)));
-    supabase.from("cash_handovers").select("*").then(({data})=>setAllHandovers(data||[]));
+    supabase.from("cash_handovers").select("*, handover_cancels(id)").then(({data})=>setAllHandovers(data||[]));
     supabase.from("client_history").select("amount,date,comment,clients(name)").eq("type","payment").then(({data})=>setAllDebtPaid(data||[]));
   },[period]);
 
@@ -1093,7 +1097,9 @@ function Reports({profile,products}) {
   const byPay={cash:0,card:0,qr:0,debt:0};
   sales.forEach(s=>{byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total);});
   const totalHandover=handovers.reduce((s,h)=>s+Number(h.amount),0);
-  const allHandoverTotal=allHandovers.reduce((s,h)=>s+Number(h.amount),0);
+  const allHandoverTotal=allHandovers
+  .filter(h=>!(h.handover_cancels?.length>0))
+  .reduce((s,h)=>s+Number(h.amount),0);
   const allDebtPaidTotal=allDebtPaid.reduce((s,h)=>s+Number(h.amount),0);
   const totalCashInRegister=allCash+allDebtPaidTotal-allHandoverTotal;
 
@@ -1165,7 +1171,7 @@ function Reports({profile,products}) {
               </div>
               {h.comment&&<div style={{color:"#64748b",fontSize:11}}>💬 {h.comment}</div>}
               <HandoverCancelBtn handover={h} profile={profile} onCancelled={()=>{
-                supabase.from("cash_handovers").select("*").then(({data})=>setAllHandovers(data||[]));
+                supabase.from("cash_handovers").select("*, handover_cancels(id)").then(({data})=>setAllHandovers(data||[]));
               }}/>
             </div>
           ))}
