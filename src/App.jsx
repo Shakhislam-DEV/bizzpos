@@ -313,7 +313,7 @@ function Dashboard({profile,products,selDate,setSelDate}) {
       {lowStock.length>0&&(
         <div style={{background:"#7f1d1d",borderRadius:12,padding:12}}>
           <div style={{fontWeight:700,color:"#fca5a5",marginBottom:8,fontSize:13}}>⚠️ Тауысылып атырған ({lowStock.length})</div>
-          {lowStock.slice(0,5).map(p=>(
+          {lowStock.map(p=>(
             <div key={p.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fecaca",padding:"3px 0"}}>
               <span>{p.name}</span><span style={{fontWeight:700}}>{p.stock} {p.unit}</span>
             </div>
