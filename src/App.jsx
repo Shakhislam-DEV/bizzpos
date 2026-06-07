@@ -182,7 +182,7 @@ function AuthPage() {
 }
 
 const NAV_ALL=[
-  {id:"dashboard",icon:"📊",label:"Басты бет"},
+  {id:"dashboard",icon:"📊",label:"Бас бет"},
   {id:"sell",icon:"💰",label:"Сатыў"},
   {id:"purchase",icon:"🛒",label:"Кирис"},
   {id:"products",icon:"📦",label:"Товарлар"},
@@ -1293,7 +1293,7 @@ function PurchaseHistory() {
   },[]);
   return (
     <div>
-      {list.length===0&&<div style={{color:"#475569",fontSize:13}}>Ҳәли кирис жоқ</div>}
+      {list.length===0&&<div style={{color:"#475569",fontSize:13}}>Еле кирис болган жоқ</div>}
       {list.map(p=>{
         const total=(p.purchase_items||[]).reduce((s,i)=>s+Number(i.qty||0)*Number(i.buy_price||0),0);
         return (
