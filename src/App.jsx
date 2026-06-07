@@ -730,7 +730,7 @@ function Products({products,categories,refreshProducts}) {
   };
 
   const del=async(id)=>{
-    if(!window.confirm("Өшире аласаңба?")) return;
+    if(!window.confirm("Өшириўди қәлейсизбе?")) return;
     await supabase.from("products").delete().eq("id",id);refreshProducts();
   };
 
