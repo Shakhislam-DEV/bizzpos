@@ -359,9 +359,8 @@ function SaleRow({s, onRefund}) {
           )}
           {/* ӨЗГЕРТІЛГЕН ЖЕР ОҒЫ: */}
           <span style={{color:"#94a3b8"}}>
-            {s.date.split(' ')[0]} {/* Тек күні */}
-            <span style={{color:"#64748b", marginLeft: 6}}>{formattedTime}</span> {/* Сағаты */}
-          </span>
+  {s.date} {s.time || s.created_at?.substring(11, 16)}
+</span>
         </div>
         <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,
           textDecoration:isRefunded?"line-through":"none"}}>
