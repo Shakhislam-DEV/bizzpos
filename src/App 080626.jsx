@@ -354,9 +354,9 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
   const saleDate=selDate||today();
 
   const loadRecent=()=>
-    supabase.from("sales").select("*,sale_items(*),refunds(id)")
-  .eq("date",saleDate).order("created_at",{ascending:false}).limit(20)
-  .then(({data})=>setRecentSales(data||[]));
+    supabase.from("sales").select("*,sale_items(*)")
+      .eq("date",saleDate).order("created_at",{ascending:false}).limit(20)
+      .then(({data})=>setRecentSales(data||[]));
 
   useEffect(()=>{loadRecent();},[saleDate]);
  getCashBalance().then(({balance}) => setCashBalance(balance));
@@ -483,44 +483,20 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
 
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
         <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>📋 Соңғы сатыўлар</div>
-        {recentSales.map(s=>{
-  const isRefunded = s.refunds?.length > 0;
-  const [showItems, setShowItems] = useState(false);
-  return (
-    <div key={s.id} style={{padding:"8px 0",borderBottom:"1px solid #0f172a",
-      background: isRefunded?"#1a0a0a":"transparent",
-      borderLeft: isRefunded?"3px solid #ef4444":"3px solid transparent",
-      paddingLeft: isRefunded?8:0}}>
-      <div style={{display:"flex",justifyContent:"space-between",fontSize:13,cursor:"pointer"}}
-        onClick={()=>setShowItems(v=>!v)}>
-        <div style={{display:"flex",alignItems:"center",gap:6}}>
-          {isRefunded&&<span style={{fontSize:10,background:"#7f1d1d",color:"#fca5a5",padding:"1px 6px",borderRadius:4}}>↩️ Қайтарылды</span>}
-          <span style={{color:"#94a3b8"}}>{s.date}</span>
-        </div>
-        <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,textDecoration:isRefunded?"line-through":"none"}}>{fmt(s.total)}</span>
-        <span style={{fontSize:11,color:"#64748b"}}>{PAYMENT[s.payment_type]}</span>
-      </div>
-      {showItems&&(
-        <div style={{marginTop:6,background:"#0f172a",borderRadius:8,padding:"6px 10px"}}>
-          {(s.sale_items||[]).map(i=>(
-            <div key={i.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,padding:"3px 0",borderBottom:"1px solid #1e293b"}}>
-              <span style={{color:"#e2e8f0"}}>{i.product_name}</span>
-              <span style={{color:"#94a3b8"}}>{i.qty} × {fmt(i.sell_price)}</span>
-              <span style={{color:"#10b981"}}>{fmt(i.qty*i.sell_price)}</span>
+        {recentSales.map(s=>(
+          <div key={s.id} style={{padding:"8px 0",borderBottom:"1px solid #0f172a"}}>
+            <div style={{display:"flex",justifyContent:"space-between",fontSize:13}}>
+              <span style={{color:"#94a3b8"}}>{s.date}</span>
+              <span style={{color:"#10b981",fontWeight:700}}>{fmt(s.total)}</span>
+              <span style={{fontSize:11,color:"#64748b"}}>{PAYMENT[s.payment_type]}</span>
             </div>
-          ))}
-          {s.comment&&<div style={{fontSize:11,color:"#64748b",marginTop:4}}>💬 {s.comment}</div>}
-        </div>
-      )}
-      {!isRefunded&&(
-        <button onClick={()=>setRefundSale(s)}
-          style={{fontSize:11,padding:"3px 10px",background:"#7f1d1d",border:"none",borderRadius:6,color:"#fca5a5",cursor:"pointer",marginTop:4}}>
-          ↩️ Қайтарыў
-        </button>
-      )}
-    </div>
-  );
-})}
+            {s.comment&&<div style={{fontSize:11,color:"#64748b"}}>💬 {s.comment}</div>}
+            <button onClick={()=>setRefundSale(s)}
+              style={{fontSize:11,padding:"3px 10px",background:"#7f1d1d",border:"none",borderRadius:6,color:"#fca5a5",cursor:"pointer",marginTop:4}}>
+              ↩️ Қайтарыў
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
