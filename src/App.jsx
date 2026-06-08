@@ -353,7 +353,8 @@ function SaleRow({s, onRefund}) {
               ↩️ Қайтарылды
             </span>
           )}
-          <span style={{color:"#94a3b8"}}>{s.date}{s.time}</span>
+          <span style={{color:"#94a3b8"}}>{s.date}</span>
+          <span style={{color:"#656cf5ff"}}>{s.time}</span>
         </div>
         <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,
           textDecoration:isRefunded?"line-through":"none"}}>
