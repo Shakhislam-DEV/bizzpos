@@ -337,6 +337,19 @@ function Dashboard({profile,products,selDate,setSelDate}) {
 function SaleRow({s, onRefund}) {
   const [showItems, setShowItems] = useState(false);
   const isRefunded = s.refunds?.length > 0;
+  
+  // САҒАТТЫ ТІКЕЛЕЙ МӘТІННЕН ҚИЫП АЛУ (Уақыт белдеуі бұзылмайды)
+  let formattedTime = "";
+  let dateOnly = s.date;
+  
+  if (s.date) {
+    const parts = s.date.includes('T') ? s.date.split('T') : s.date.split(' ');
+    dateOnly = parts[0]; // Тек күні
+    if (parts[1]) {
+      formattedTime = parts[1].substring(0, 5); // Тек сағаты (мысалы: 01:58)
+    }
+  }
+
   return (
     <div style={{
       padding:"8px 0",
@@ -353,8 +366,14 @@ function SaleRow({s, onRefund}) {
               ↩️ Қайтарылды
             </span>
           )}
-          <span style={{color:"#94a3b8"}}>{s.date}</span>
-          </div>
+          
+          {/* КҮН ЖӘНЕ НАҚТЫ САҒАТ */}
+          <span style={{color:"#94a3b8"}}>
+            {dateOnly} 
+            {formattedTime && <span style={{color:"#64748b", marginLeft: 6}}>{formattedTime}</span>}
+          </span>
+          
+        </div>
         <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,
           textDecoration:isRefunded?"line-through":"none"}}>
           {fmt(s.total)}
