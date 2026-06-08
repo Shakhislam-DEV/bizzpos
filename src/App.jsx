@@ -338,8 +338,14 @@ function SaleRow({s, onRefund}) {
   const [showItems, setShowItems] = useState(false);
   const isRefunded = s.refunds?.length > 0;
   
-  // Уақытты форматтау (егер s.date толық форматта болса)
-  const formattedTime = s.date ? new Date(s.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+  // НАҚТЫ БІЗДІҢ САҒАТТЫ КӨРСЕТЕТІН ЖЕРІ:
+  const formattedTime = s.date 
+    ? new Date(s.date).toLocaleTimeString('ru-RU', {
+        timeZone: 'Asia/Tashkent', 
+        hour: '2-digit', 
+        minute: '2-digit'
+      }) 
+    : '';
 
   return (
     <div style={{
@@ -357,10 +363,13 @@ function SaleRow({s, onRefund}) {
               ↩️ Қайтарылды
             </span>
           )}
-          {/* ӨЗГЕРТІЛГЕН ЖЕР ОҒЫ: */}
+          
+          {/* КҮН МЕН НАҚТЫ САҒАТТЫ ШЫҒАРУ */}
           <span style={{color:"#94a3b8"}}>
-  {s.date} {s.time || s.created_at?.substring(11, 16)}
-</span>
+            {s.date.split(' ')[0] || s.date} {/* Күні */}
+            <span style={{color:"#64748b", marginLeft: 6}}>{formattedTime}</span> {/* Біздің сағат */}
+          </span>
+          
         </div>
         <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,
           textDecoration:isRefunded?"line-through":"none"}}>
@@ -368,6 +377,8 @@ function SaleRow({s, onRefund}) {
         </span>
         <span style={{fontSize:11,color:"#64748b"}}>{PAYMENT[s.payment_type]}</span>
       </div>
+      
+      {/* Төменгі жағы өзгеріссіз қалады... */}
       {showItems&&(
         <div style={{marginTop:6,background:"#0f172a",borderRadius:8,padding:"6px 10px"}}>
           {(s.sale_items||[]).map(i=>(
