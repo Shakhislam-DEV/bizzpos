@@ -337,6 +337,10 @@ function Dashboard({profile,products,selDate,setSelDate}) {
 function SaleRow({s, onRefund}) {
   const [showItems, setShowItems] = useState(false);
   const isRefunded = s.refunds?.length > 0;
+  
+  // Уақытты форматтау (егер s.date толық форматта болса)
+  const formattedTime = s.date ? new Date(s.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '';
+
   return (
     <div style={{
       padding:"8px 0",
@@ -353,8 +357,11 @@ function SaleRow({s, onRefund}) {
               ↩️ Қайтарылды
             </span>
           )}
-          <span style={{color:"#94a3b8"}}>{s.date}</span>
-          <span style={{color:"#656cf5ff"}}>{s.time}</span>
+          {/* ӨЗГЕРТІЛГЕН ЖЕР ОҒЫ: */}
+          <span style={{color:"#94a3b8"}}>
+            {s.date.split(' ')[0]} {/* Тек күні */}
+            <span style={{color:"#64748b", marginLeft: 6}}>{formattedTime}</span> {/* Сағаты */}
+          </span>
         </div>
         <span style={{color:isRefunded?"#ef4444":"#10b981",fontWeight:700,
           textDecoration:isRefunded?"line-through":"none"}}>
