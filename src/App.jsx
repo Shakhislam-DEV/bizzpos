@@ -261,10 +261,11 @@ function MainApp({profile}) {
 }
 
 // ─── DASHBOARD ───────────────────────────────────────────────
-function Dashboard({profile,products,selDate,setSelDate}) {
+function Dashboard({profile,products,selDate,setSelDate,clients}) {
   const [sales,setSales]=useState([]);
   const [items,setItems]=useState([]);
   const [handover,setHandover]=useState(0);
+  const [totalDebt,setTotalDebt]=useState(0);
 
   useEffect(()=>{
     supabase.from("sales").select("*").eq("date",selDate).then(({data})=>setSales(data||[]));
@@ -273,6 +274,8 @@ function Dashboard({profile,products,selDate,setSelDate}) {
     supabase.from("cash_handovers").select("amount").eq("date",selDate)
       .then(({data})=>setHandover((data||[]).reduce((s,h)=>s+Number(h.amount),0)));
   },[selDate]);
+  supabase.from("clients").select("debt")
+  .then(({data})=>setTotalDebt((data||[]).reduce((s,c)=>s+Number(c.debt),0)));
 
   const revenue=sales.reduce((s,x)=>s+Number(x.total),0);
   const cost=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
@@ -298,6 +301,7 @@ function Dashboard({profile,products,selDate,setSelDate}) {
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b"/>
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6"/>
         <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6"/>
+        <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
       </div>
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
         <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
