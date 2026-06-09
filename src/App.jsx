@@ -309,7 +309,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
           {Object.entries(byPay).map(([k,v])=>(
             <div key={k} style={{background:"#0f172a",borderRadius:8,padding:"8px 10px"}}>
               <div style={{fontSize:11,color:"#64748b"}}>{PAYMENT[k]}</div>
-              <div style={{fontWeight:700,fontSize:13,color:"#faf8f8ff",marginTop:2}}>{k==="debt" ? fmt(totalClientsDebt) : fmt(v)}</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#faf8f8ff",marginTop:2}}>{fmt(v)}</div>
             </div>
           ))}
         </div>
