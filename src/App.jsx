@@ -301,7 +301,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b"/>
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6"/>
         <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6"/>
-        <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
+        <Card icon="📒" label="Жәми қарыз" value={fmt(v)} color="#ef4444"/>
       </div>
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
         <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
@@ -316,7 +316,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
       </div>
       {lowStock.length>0&&(
         <div style={{background:"#7f1d1d",borderRadius:12,padding:12}}>
-          <div style={{fontWeight:700,color:"#fca5a5",marginBottom:8,fontSize:13}}>⚠️ Тауысылып атырған ({lowStock.length})</div>
+          <div style={{fontWeight:700,color:"#fca5a5",marginBottom:8,fontSize:13}}>⚠️ Тауысылып атырған товарлар ({lowStock.length})</div>
           {lowStock.map(p=>(
             <div key={p.id} style={{display:"flex",justifyContent:"space-between",fontSize:12,color:"#fecaca",padding:"3px 0"}}>
               <span>{p.name}</span><span style={{fontWeight:700}}>{p.stock} {p.unit}</span>
