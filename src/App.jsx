@@ -304,15 +304,14 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
         <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
       </div>
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
-        <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
-        {Object.entries(byPay).map(([k,v])=>(
-  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0f172a",fontSize:13}}>
-    <span>{PAYMENT[k]}</span>
-    <span style={{fontWeight:700}}>
-      {k==="debt" ? fmt(totalClientsDebt) : fmt(v)}
-    </span>
-  </div>
-))}
+      <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          {Object.entries(byPay).map(([k,v])=>(
+            <div key={k} style={{background:"#0f172a",borderRadius:8,padding:"8px 10px"}}>
+              <div style={{fontSize:11,color:"#64748b"}}>{PAYMENT[k]}</div>
+              <div style={{fontWeight:700,fontSize:13,color:"#faf8f8ff",marginTop:2}}>{fmt(v)}</div>
+            </div>
+          ))}
         </div>
       </div>
       {lowStock.length>0&&(
