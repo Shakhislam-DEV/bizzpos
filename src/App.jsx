@@ -301,7 +301,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
         <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b"/>
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6"/>
         <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6"/>
-        <Card icon="📒" label="Жәми қарыз" value={fmt(v)} color="#ef4444"/>
+        <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
       </div>
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
         <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
