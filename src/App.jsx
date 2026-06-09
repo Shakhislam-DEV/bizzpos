@@ -1118,6 +1118,7 @@ function Reports({profile,products}) {
   const [showHandovers,setShowHandovers]=useState(false);
   const [closing,setClosing]=useState(false);
   const [closeMsg,setCloseMsg]=useState("");
+  const [totalClientsDebt, setTotalClientsDebt] = useState(0);
 
   useEffect(()=>{
     const filter=period==="today"?today()
@@ -1134,6 +1135,8 @@ function Reports({profile,products}) {
     supabase.from("cash_handovers").select("*, handover_cancels(id)").then(({data})=>setAllHandovers(data||[]));
     supabase.from("client_history").select("amount,date,comment,clients(name)").eq("type","payment").then(({data})=>setAllDebtPaid(data||[]));
   },[period]);
+  supabase.from("clients").select("debt")
+  .then(({data})=>setTotalClientsDebt((data||[]).reduce((s,c)=>s+Number(c.debt),0)));
 
   const revenue=sales.reduce((s,x)=>s+Number(x.total),0);
   const cost=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
@@ -1261,10 +1264,13 @@ function Reports({profile,products}) {
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
         <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
         {Object.entries(byPay).map(([k,v])=>(
-          <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0f172a",fontSize:13}}>
-            <span>{PAYMENT[k]}</span><span style={{fontWeight:700}}>{fmt(v)}</span>
-          </div>
-        ))}
+  <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0f172a",fontSize:13}}>
+    <span>{PAYMENT[k]}</span>
+    <span style={{fontWeight:700}}>
+      {k==="debt" ? fmt(totalClientsDebt) : fmt(v)}
+    </span>
+  </div>
+))}
       </div>
 
       <button onClick={downloadStock} style={{padding:12,background:"#1e293b",border:"1px solid #334155",borderRadius:10,color:"#e2e8f0",cursor:"pointer",fontWeight:700,fontSize:13}}>
