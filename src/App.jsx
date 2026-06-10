@@ -306,13 +306,10 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
       <div style={{background:"#1e293b",borderRadius:12,padding:12}}>
       <div style={{fontWeight:700,color:"#f59e0b",marginBottom:8,fontSize:13}}>💳 Төлем түрлери</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-          {Object.entries(byPay).map(([k,v])=>(
+      {Object.entries(byPay).map(([k,v])=>(
   <div key={k} style={{background:"#0f172a",borderRadius:8,padding:"8px 10px"}}>
     <div style={{fontSize:11,color:"#64748b"}}>{PAYMENT[k]}</div>
-    <div style={{fontWeight:700,fontSize:13,color:"#e2e8f0",marginTop:2}}>
-      {fmt(v)}
-    </div>
-    {k==="debt"&&v>0&&<div style={{fontSize:10,color:"#64748b"}}>бүгин қарызға берилди</div>}
+    <div style={{fontWeight:700,fontSize:13,color:"#e2e8f0",marginTop:2}}>{fmt(v)}</div>
   </div>
 ))}
         </div>
