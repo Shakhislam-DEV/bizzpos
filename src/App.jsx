@@ -310,7 +310,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
   <div key={k} style={{background:"#0f172a",borderRadius:8,padding:"8px 10px"}}>
     <div style={{fontSize:11,color:"#64748b"}}>{PAYMENT[k]}</div>
     <div style={{fontWeight:700,fontSize:13,color:"#e2e8f0",marginTop:2}}>
-      {k==="debt" ? fmt(totalClientsDebt) : fmt(v)}
+      {fmt(v)}
     </div>
     {k==="debt"&&v>0&&<div style={{fontSize:10,color:"#64748b"}}>бүгин қарызға берилди</div>}
   </div>
