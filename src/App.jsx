@@ -1270,7 +1270,7 @@ function Reports({profile,products}) {
   <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:"1px solid #0f172a",fontSize:13}}>
     <span>{PAYMENT[k]}</span>
     <span style={{fontWeight:700}}>
-      {fmt(v)}
+      {k==="debt" ? fmt(totalClientsDebt) : fmt(v)}
     </span>
   </div>
 ))}
