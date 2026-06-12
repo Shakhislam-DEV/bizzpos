@@ -392,7 +392,7 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
   const [cart,setCart]=useState([]);
   const [productId,setProductId]=useState("");
   const [qty,setQty]=useState("");
-  const [payType,setPayType]=useState("cash");
+  const [payments,setPayments]=useState({cash:"",card:"",qr:"",debt:""});
   const [clientId,setClientId]=useState("");
   const [comment,setComment]=useState("");
   const [msg,setMsg]=useState("");
@@ -426,30 +426,37 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
   };
 
   const total=cart.reduce((s,i)=>s+i.qty*i.sell_price,0);
+  const totalPaid = Object.values(payments).reduce((s,v)=>s+Number(v||0),0);
+  const remaining = total - totalPaid;
 
   const submit=async()=>{
     if(!cart.length) return;
     setSaving(true);
-    const {data:sale,error}=await supabase.from("sales").insert({
-      seller_id:profile.id,client_id:clientId||null,
-      payment_type:payType,total,comment,date:saleDate
-    }).select().single();
+    // Эң көп төленген түр — баслапқы тип
+   const mainPayType = Object.entries(payments).sort((a,b)=>Number(b[1]||0)-Number(a[1]||0))[0][0];
+ const {data:sale,error}=await supabase.from("sales").insert({
+  seller_id:profile.id,client_id:clientId||null,
+  payment_type:mainPayType,total,
+  comment:`${comment||""}|cash:${payments.cash||0}|card:${payments.card||0}|qr:${payments.qr||0}|debt:${payments.debt||0}`,
+  date:saleDate
+}).select().single();
     if(error){setMsg("❌ Қате болды!");setSaving(false);return;}
     await supabase.from("sale_items").insert(cart.map(i=>({...i,sale_id:sale.id})));
     for(const i of cart){
       const p=products.find(x=>x.id===i.product_id);
       if(p) await supabase.from("products").update({stock:p.stock-i.qty}).eq("id",p.id);
     }
-    if(payType==="debt"&&clientId){
-      const cl=clients.find(c=>c.id===+clientId);
-      if(cl) await supabase.from("clients").update({debt:cl.debt+total}).eq("id",cl.id);
-      await supabase.from("client_history").insert({client_id:+clientId,type:"debt",amount:total,comment:comment||null,date:saleDate});
-      refreshClients();
-    }
+    if(Number(payments.debt||0)>0&&clientId){
+  const cl=clients.find(c=>c.id===+clientId);
+  if(cl) await supabase.from("clients").update({debt:cl.debt+Number(payments.debt)}).eq("id",cl.id);
+  await supabase.from("client_history").insert({client_id:+clientId,type:"debt",amount:Number(payments.debt),comment:comment||null,date:saleDate});
+  refreshClients();
+}
     await printReceipt(sale,cart);
     await sendTelegram(`🛒 <b>Жаңа сатыў</b>\n👤 ${profile.full_name}\n💰 ${fmt(total)}\n${PAYMENT[payType]}\n📅 ${saleDate}`);
     refreshProducts();
     setCart([]);setComment("");setClientId("");
+    setPayments({cash:"",card:"",qr:"",debt:""});
     setMsg("✅ Сатыў сақланды!");setTimeout(()=>setMsg(""),3000);
     loadRecent();setSaving(false);
   };
@@ -483,21 +490,46 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
             ➕ Қос
           </button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginBottom:8}}>
-          {Object.entries(PAYMENT).map(([k,v])=>(
-            <button key={k} onClick={()=>setPayType(k)}
-              style={{padding:"8px 4px",background:payType===k?"#10b981":"#0f172a",border:`1px solid ${payType===k?"#10b981":"#334155"}`,
-                borderRadius:8,color:payType===k?"#0f172a":"#94a3b8",fontWeight:payType===k?700:400,cursor:"pointer",fontSize:12}}>
-              {v}
-            </button>
-          ))}
+<div style={{marginBottom:8}}>
+  <div style={{fontSize:11,color:"#94a3b8",marginBottom:6}}>💳 Төлем түрлери</div>
+  {Object.entries(PAYMENT).map(([k,v])=>(
+    <div key={k} style={{marginBottom:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer"}}
+        onClick={()=>setPayments(p=>({...p,[k]:p[k]!==""?"":" "}))}>
+        <div style={{width:20,height:20,borderRadius:4,border:"2px solid",
+          borderColor:payments[k]!==""?"#10b981":"#334155",
+          background:payments[k]!==""?"#10b981":"transparent",
+          display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          {payments[k]!==""&&<span style={{color:"#0f172a",fontSize:12,fontWeight:700}}>✓</span>}
         </div>
-        {payType==="debt"&&(
-          <select value={clientId} onChange={e=>setClientId(e.target.value)} style={inputStyle}>
-            <option value="">Клиент таңлаң...</option>
-            {clients.map(c=><option key={c.id} value={c.id}>{c.name} (қарыз: {fmt(c.debt)})</option>)}
-          </select>
-        )}
+        <span style={{fontSize:13,color:payments[k]!==""?"#e2e8f0":"#64748b"}}>{v}</span>
+      </div>
+      {payments[k]!==""&&(
+        <input type="number" min="0" placeholder="Сумма" autoFocus
+          value={payments[k]===" "?"":payments[k]}
+          onChange={e=>setPayments(p=>({...p,[k]:e.target.value}))}
+          style={{width:"100%",marginTop:4,padding:"8px 10px",background:"#0f172a",
+            border:"1px solid #10b981",borderRadius:8,color:"#e2e8f0",
+            fontSize:13,boxSizing:"border-box"}}/>
+      )}
+    </div>
+  ))}
+  <div style={{display:"flex",justifyContent:"space-between",marginTop:8,padding:"6px 0",borderTop:"1px solid #334155"}}>
+    <span style={{fontSize:12,color:"#64748b"}}>Төленди:</span>
+    <span style={{fontSize:13,fontWeight:700,color:remaining===0?"#10b981":remaining>0?"#f59e0b":"#ef4444"}}>
+      {fmt(totalPaid)} / {fmt(total)}
+    </span>
+  </div>
+  {remaining>0&&cart.length>0&&<div style={{fontSize:11,color:"#f59e0b"}}>⚠️ Қалдық: {fmt(remaining)}</div>}
+  {remaining<0&&<div style={{fontSize:11,color:"#ef4444"}}>❌ Артық: {fmt(Math.abs(remaining))}</div>}
+</div>
+
+{payments.debt!==""&&(
+  <select value={clientId} onChange={e=>setClientId(e.target.value)} style={inputStyle}>
+    <option value="">Клиент таңлаң...</option>
+    {clients.map(c=><option key={c.id} value={c.id}>{c.name} (қарыз: {fmt(c.debt)})</option>)}
+  </select>
+)}
         <Inp placeholder="Комментарий (ихтиярий)" value={comment} onChange={setComment}/>
       </div>
 
@@ -515,7 +547,7 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
           <div style={{display:"flex",justifyContent:"space-between",marginTop:10,fontWeight:700,fontSize:16}}>
             <span>Жәми:</span><span style={{color:"#f59e0b"}}>{fmt(total)}</span>
           </div>
-          <button onClick={submit} disabled={saving}
+          <button onClick={submit} disabled={saving||remaining!==0}
             style={{width:"100%",padding:12,background:"#10b981",border:"none",borderRadius:8,color:"#0f172a",fontWeight:700,cursor:"pointer",marginTop:8,fontSize:14}}>
             {saving?"Сақланып атыр…":"✅ Сатыўды сақлаў ҳәм чек"}
           </button>
