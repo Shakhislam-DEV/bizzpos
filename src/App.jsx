@@ -298,7 +298,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <Card icon="💰" label="Сатыў" value={fmt(revenue)} color="#10b981"/>
-        // <Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b"/>
+        {<Card icon="📈" label="Пайда" value={fmt(profit)} color="#f59e0b"/>}
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6"/>
         <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6"/>
         <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
@@ -1099,7 +1099,7 @@ function Stats() {
       </div>
       <PieBlock data={pieQty} title="🏆 Товар үлеси (саны бойынша)" formatter={v=>v+" дана"}/>
       <PieBlock data={pieSum} title="💰 Товар үлеси (сумма бойынша)" formatter={fmt}/>
-      <PieBlock data={pieProfit} title="📈 Товар үлеси (пайда бойынша)" formatter={fmt}/>
+      <PieBlock data={pieProfit} title="📈 Товар үлеси ( бойынша)" formatter={fmt}/>
     </div>
   );
 }
