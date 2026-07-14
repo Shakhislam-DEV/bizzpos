@@ -28,20 +28,29 @@ const PAYMENT = { cash:"💵 Нақ", card:"💳 Терминал", qr:"📱 QR"
 
 // ─── КАССА БАЛАНСЫ ───────────────────────────────────────────
 async function getCashBalance() {
-  const [s1,s2,s3,s4] = await Promise.all([
-    supabase.from("sales").select("total").eq("payment_type","cash"),
-    supabase.from("cash_handovers").select("amount, handover_cancels(id)"),
-    supabase.from("client_history").select("amount").eq("type","payment"),
-    supabase.from("refunds").select("total"),
+  const [s1, s2, s3, s4] = await Promise.all([
+    supabase.from("sales").select("total").eq("payment_type", "cash"), // Барлық уақыт
+    supabase.from("cash_handovers").select("amount, handover_cancels(id)"), // Барлық уақыт
+    supabase.from("client_history").select("amount").eq("type", "payment"), // Барлық уақыт
+    supabase.from("refunds").select("total"), // Барлық уақыт
   ]);
-  const totalCash = (s1.data||[]).reduce((s,x)=>s+Number(x.total),0);
-  // Тек отмена қылынмаған тапсырыўлар
-  const activeHandovers = (s2.data||[]).filter(h=>!(h.handover_cancels?.length>0));
-  const totalHand = activeHandovers.reduce((s,x)=>s+Number(x.amount),0);
-  const totalDebt = (s3.data||[]).reduce((s,x)=>s+Number(x.amount),0);
-  // Қайтарыўлар кассадан кемейтилген
-  const totalRefunds = (s4.data||[]).reduce((s,x)=>s+Number(x.total),0);
-  return { balance: totalCash + totalDebt - totalHand, totalCash, totalHand, totalDebt };
+
+  const totalCash = (s1.data || []).reduce((s, x) => s + Number(x.total), 0);
+  
+  // Тапсырылған (инкассация) ақшаларды есептеу
+  const activeHandovers = (s2.data || []).filter(h => !(h.handover_cancels?.length > 0));
+  const totalHand = activeHandovers.reduce((s, x) => s + Number(x.amount), 0);
+  
+  // Қарыз төлеулерді қосу
+  const totalDebt = (s3.data || []).reduce((s, x) => s + Number(x.amount), 0);
+  
+  // Қайтарымдарды (refunds) кассадан азайту
+  const totalRefunds = (s4.data || []).reduce((s, x) => s + Number(x.total), 0);
+  
+  // Итог (Барлық түскен - Барлық кеткен - Барлық тапсырылған)
+  const balance = totalCash + totalDebt - totalHand - totalRefunds;
+  
+  return { balance, totalCash, totalHand, totalDebt };
 }
 // ─── PRINT ───────────────────────────────────────────────────
 async function printReceipt(sale, items) {
