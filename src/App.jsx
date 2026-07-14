@@ -581,36 +581,48 @@ function RefundModal({sale,onClose,onRefunded,profile,refreshProducts}) {
   const selectedItems=items.filter(i=>selItems[i.id]?.checked);
   const total=selectedItems.reduce((s,i)=>s+i.sell_price*(selItems[i.id]?.qty||i.qty),0);
 
-  const submit=async()=>{
-    if(!selectedItems.length){setMsg("❌ Товар таңлаңыз!");return;}
+  const submit = async () => {
+    if (!selectedItems.length) { setMsg("❌ Товар таңлаңыз!"); return; }
     setSaving(true);
-    const {balance}=await getCashBalance();
-    if(total>balance){setMsg(`❌ Кассада жеткиликсиз! Қалдық: ${fmt(balance)}`);setSaving(false);return;}
-
-    const {data:refund}=await supabase.from("refunds").insert({
-      sale_id:sale.id,seller_id:profile.id,reason:reason||null,total,date:today()
+    
+    // 1. refunds кестесіне сақтау
+    const { data: refund, error } = await supabase.from("refunds").insert({
+      sale_id: sale.id,
+      seller_id: profile.id,
+      reason: reason || null,
+      total,
+      date: today()
     }).select().single();
 
-   await supabase.from("refund_items").insert(
-  selectedItems.map(i=>({refund_id:refund.id,product_id:i.product_id||null,product_name:i.product_name,
-    qty:selItems[i.id]?.qty||i.qty,sell_price:i.sell_price||0,buy_price:i.buy_price||0}))
-);
+    if (error) { setMsg("❌ Қате: " + error.message); setSaving(false); return; }
 
-    for(const i of selectedItems){
-      const qty=selItems[i.id]?.qty||i.qty;
-      const {data:prod}=await supabase.from("products").select("stock").eq("id",i.product_id).single();
-      if(prod) await supabase.from("products").update({stock:prod.stock+qty}).eq("id",i.product_id);
+    // 2. refund_items кестесіне жазу
+    await supabase.from("refund_items").insert(
+      selectedItems.map(i => ({
+        refund_id: refund.id,
+        product_id: i.product_id || null,
+        product_name: i.product_name,
+        qty: selItems[i.id]?.qty || i.qty,
+        sell_price: i.sell_price || 0,
+        buy_price: i.buy_price || 0
+      }))
+    );
+
+    // 3. Товар қалдығын қосу
+    for (const i of selectedItems) {
+      const qty = selItems[i.id]?.qty || i.qty;
+      const { data: prod } = await supabase.from("products").select("stock").eq("id", i.product_id).single();
+      if (prod) await supabase.from("products").update({ stock: prod.stock + qty }).eq("id", i.product_id);
     }
 
-    await supabase.from("cash_handovers").insert({
-    seller_id:profile.id, amount:total,
-    comment:`Қайтарыў: чек №${sale.id}${reason?" — "+reason:""}`, date:today()
-});
-
-    await sendTelegram(`↩️ <b>Товар қайтарылды</b>\n👤 ${profile.full_name}\n🧾 Чек №${sale.id}\n💰 ${fmt(total)}\n💬 ${reason||"—"}`);
+    // --- МЫНА ЖЕРДІ ӨШІРІҢІЗ ---
+    // await supabase.from("cash_handovers").insert({ ... }); 
+    
+    await sendTelegram(`↩️ <b>Товар қайтарылды</b>\n👤 ${profile.full_name}\n🧾 Чек №${sale.id}\n💰 ${fmt(total)}\n💬 ${reason || "—"}`);
+    
     refreshProducts();
     setMsg("✅ Қайтарыў сақланды!");
-    setTimeout(()=>{onRefunded();onClose();},2000);
+    setTimeout(() => { onRefunded(); onClose(); }, 2000);
     setSaving(false);
   };
 
