@@ -42,9 +42,7 @@ async function getCashBalance() {
   const totalDebt = (s3.data || []).reduce((s, x) => s + Number(x.amount), 0);
   const totalRefunds = (s4.data || []).reduce((s, x) => s + Number(x.total), 0);
   
-  // Барлық нақ ақшадан тапсырылғанды және қайтарымдарды шегереміз
   const balance = totalCash + totalDebt - totalHand - totalRefunds;
-  
   return { balance, totalCash, totalHand, totalDebt };
 }
 // ─── PRINT ───────────────────────────────────────────────────
@@ -282,14 +280,11 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
   .then(({data})=>setTotalDebt((data||[]).reduce((s,c)=>s+Number(c.debt),0)));
 
   const revenue = sales.reduce((s, x) => s + Number(x.total), 0);
-
-// --- МЫНА ЖЕРДІ ӨЗГЕРТІҢІЗ ---
-// Барлық қайтарылған тауарлардың сомасын жинаймыз
-const totalRefunds = sales.reduce((s, x) => s + (x.refunds?.length > 0 ? Number(x.total) : 0), 0);
-const finalRevenue = revenue - totalRefunds; 
-
-const cost = items.reduce((s, x) => s + Number(x.qty||0)*Number(x.buy_price||0),0);
-const profit = finalRevenue - cost;
+  const totalRefunds = sales.reduce((s, x) => s + (x.refunds?.length > 0 ? Number(x.total) : 0), 0);
+  const finalRevenue = revenue - totalRefunds;
+  const cost = items.reduce((s, x) => s + Number(x.qty||0)*Number(x.buy_price||0),0);
+  const profit = finalRevenue - cost;
+  // Жоғарыдағы Card ішіндегі value={fmt(revenue)} орнына value={fmt(finalRevenue)} деп ауыстырыңыз.
   const byPay={cash:0,card:0,qr:0,debt:0};
   sales.forEach(s=>{byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total);});
   const lowStock=products.filter(p=>p.stock<=p.min_stock);
