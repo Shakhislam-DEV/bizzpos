@@ -409,8 +409,13 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
       .eq("date",saleDate).order("created_at",{ascending:false}).limit(20)
       .then(({data})=>setRecentSales(data||[]));
 
-  useEffect(()=>{loadRecent();},[saleDate]);
- getCashBalance().then(({balance}) => setCashBalance(balance));
+  // Sell компонентінің ішінде:
+useEffect(() => {
+  loadRecent();
+  // Әр рет компонент жүктелгенде кассаны жаңарту
+  getCashBalance().then(({balance}) => setCashBalance(balance));
+}, [selDate]); // selDate өзгергенде де жаңарады
+
   const addToCart=()=>{
     const p=products.find(x=>x.id===+productId);
     if(!p||!qty) return;
@@ -448,6 +453,11 @@ function Sell({profile,products,clients,refreshProducts,refreshClients,selDate})
     await printReceipt(sale,cart);
     await sendTelegram(`🛒 <b>Жаңа сатыў</b>\n👤 ${profile.full_name}\n💰 ${fmt(total)}\n${PAYMENT[payType]}\n📅 ${saleDate}`);
     refreshProducts();
+    await sendTelegram(`🛒 <b>Жаңа сатыў</b>\n👤 ${profile.full_name}\n💰 ${fmt(total)}\n${PAYMENT[payType]}\n📅 ${saleDate}`);
+    refreshProducts();
+    
+    // МЫНА ЖЕРГЕ ҚОСЫҢЫЗ:
+    getCashBalance().then(({balance}) => setCashBalance(balance));
     setCart([]);setComment("");setClientId("");
     setMsg("✅ Сатыў сақланды!");setTimeout(()=>setMsg(""),3000);
     loadRecent();setSaving(false);
