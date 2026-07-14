@@ -27,27 +27,22 @@ const ROLES   = { director:"Директор", seller:"Сатыўшы", supply:"
 const PAYMENT = { cash:"💵 Нақ", card:"💳 Терминал", qr:"📱 QR", debt:"📒 Қарыз" };
 
 // ─── КАССА БАЛАНСЫ ───────────────────────────────────────────
+// 30-жолдан басталатын функцияны мынаған ауыстырыңыз:
 async function getCashBalance() {
   const [s1, s2, s3, s4] = await Promise.all([
-    supabase.from("sales").select("total").eq("payment_type", "cash"), // Барлық уақыт
-    supabase.from("cash_handovers").select("amount, handover_cancels(id)"), // Барлық уақыт
-    supabase.from("client_history").select("amount").eq("type", "payment"), // Барлық уақыт
-    supabase.from("refunds").select("total"), // Барлық уақыт
+    supabase.from("sales").select("total").eq("payment_type", "cash"),
+    supabase.from("cash_handovers").select("amount, handover_cancels(id)"),
+    supabase.from("client_history").select("amount").eq("type", "payment"),
+    supabase.from("refunds").select("total"),
   ]);
 
   const totalCash = (s1.data || []).reduce((s, x) => s + Number(x.total), 0);
-  
-  // Тапсырылған (инкассация) ақшаларды есептеу
   const activeHandovers = (s2.data || []).filter(h => !(h.handover_cancels?.length > 0));
   const totalHand = activeHandovers.reduce((s, x) => s + Number(x.amount), 0);
-  
-  // Қарыз төлеулерді қосу
   const totalDebt = (s3.data || []).reduce((s, x) => s + Number(x.amount), 0);
-  
-  // Қайтарымдарды (refunds) кассадан азайту
   const totalRefunds = (s4.data || []).reduce((s, x) => s + Number(x.total), 0);
   
-  // Итог (Барлық түскен - Барлық кеткен - Барлық тапсырылған)
+  // Барлық нақ ақшадан тапсырылғанды және қайтарымдарды шегереміз
   const balance = totalCash + totalDebt - totalHand - totalRefunds;
   
   return { balance, totalCash, totalHand, totalDebt };
@@ -287,8 +282,10 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
   .then(({data})=>setTotalDebt((data||[]).reduce((s,c)=>s+Number(c.debt),0)));
 
   const revenue=sales.reduce((s,x)=>s+Number(x.total),0);
+  const totalRefunds = sales.reduce((s, x) => s + (x.refunds?.length > 0 ? Number(x.total) : 0), 0);
+  const finalRevenue = revenue - totalRefunds;
   const cost=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
-  const profit=revenue-cost;
+  const profit = finalRevenue - cost; // Мұнда да finalRevenue қолданамыз
   const byPay={cash:0,card:0,qr:0,debt:0};
   sales.forEach(s=>{byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total);});
   const lowStock=products.filter(p=>p.stock<=p.min_stock);
@@ -306,7 +303,7 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
           style={{padding:"10px 14px",background:"#f59e0b",border:"none",borderRadius:10,color:"#0f172a",fontWeight:700,cursor:"pointer",fontSize:12}}>Бүгин</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-        <Card icon="💰" label="Сатыў" value={fmt(revenue)} color="#10b981"/>
+        <Card icon="💰" label="Сатыў" value={fmt(finalRevenue)} color="#10b981"/>
         <Card icon="🛒" label="Сатыўлар" value={sales.length+" рет"} color="#3b82f6"/>
         <Card icon="💸" label="Тапсырылған" value={fmt(handover)} color="#8b5cf6"/>
         <Card icon="📒" label="Жәми қарыз" value={fmt(totalDebt)} color="#ef4444"/>
@@ -606,9 +603,9 @@ function RefundModal({sale,onClose,onRefunded,profile,refreshProducts}) {
     }
 
     await supabase.from("cash_handovers").insert({
-      seller_id:profile.id,amount:total,
-      comment:`Қайтарыў: чек №${sale.id}${reason?" — "+reason:""}`,date:today()
-    });
+    seller_id:profile.id, amount:total,
+    comment:`Қайтарыў: чек №${sale.id}${reason?" — "+reason:""}`, date:today()
+});
 
     await sendTelegram(`↩️ <b>Товар қайтарылды</b>\n👤 ${profile.full_name}\n🧾 Чек №${sale.id}\n💰 ${fmt(total)}\n💬 ${reason||"—"}`);
     refreshProducts();
