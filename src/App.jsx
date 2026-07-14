@@ -197,7 +197,7 @@ const NAV_ALL=[
   {id:"settings",icon:"⚙️",label:"Параметр"},
 ];
 const NAV_ROLES={
-  seller:["sell","clients","requests"],
+  seller:["dashboard","sell","clients","requests"],
   supply:["dashboard","sell","purchase","products","clients","requests","stats","reports"],
   director:["dashboard","sell","purchase","products","clients","requests","stats","reports","settings"],
 };
