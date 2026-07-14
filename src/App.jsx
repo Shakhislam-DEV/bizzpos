@@ -281,11 +281,15 @@ function Dashboard({profile,products,selDate,setSelDate,clients}) {
   supabase.from("clients").select("debt")
   .then(({data})=>setTotalDebt((data||[]).reduce((s,c)=>s+Number(c.debt),0)));
 
-  const revenue=sales.reduce((s,x)=>s+Number(x.total),0);
-  const totalRefunds = sales.reduce((s, x) => s + (x.refunds?.length > 0 ? Number(x.total) : 0), 0);
-  const finalRevenue = revenue - totalRefunds;
-  const cost=items.reduce((s,x)=>s+Number(x.qty||0)*Number(x.buy_price||0),0);
-  const profit = finalRevenue - cost; // Мұнда да finalRevenue қолданамыз
+  const revenue = sales.reduce((s, x) => s + Number(x.total), 0);
+
+// --- МЫНА ЖЕРДІ ӨЗГЕРТІҢІЗ ---
+// Барлық қайтарылған тауарлардың сомасын жинаймыз
+const totalRefunds = sales.reduce((s, x) => s + (x.refunds?.length > 0 ? Number(x.total) : 0), 0);
+const finalRevenue = revenue - totalRefunds; 
+
+const cost = items.reduce((s, x) => s + Number(x.qty||0)*Number(x.buy_price||0),0);
+const profit = finalRevenue - cost;
   const byPay={cash:0,card:0,qr:0,debt:0};
   sales.forEach(s=>{byPay[s.payment_type]=(byPay[s.payment_type]||0)+Number(s.total);});
   const lowStock=products.filter(p=>p.stock<=p.min_stock);
